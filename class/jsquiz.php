@@ -29,7 +29,6 @@ class jsquiz
 			array("\n"  , "\n"),
 			implode("\n", $this->data)
 		);
-		if (DEBUG > 1) return $code;
 
 		list($code, $this->strings) = $this->extractStrings($code);
 
