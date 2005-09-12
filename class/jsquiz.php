@@ -30,6 +30,8 @@ class jsquiz
 			implode("\n", $this->data)
 		);
 
+		if (DEBUG) return $code;
+
 		list($code, $this->strings) = $this->extractStrings($code);
 
 		list($code, $this->closures) = $this->extractClosures($code);
