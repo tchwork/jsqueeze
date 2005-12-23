@@ -15,6 +15,7 @@ class jsquiz
 	protected $known = array();
 	protected $data = array();
 	protected $counter;
+	protected $varRx = '\\$[a-zA-Z_][a-zA-Z0-9_]*';
 
 	public function addFile($filename)
 	{
@@ -191,9 +192,9 @@ class jsquiz
 
 		# Get all used vars, local and non-local
 		$tree['used'] = array();
-		$a = preg_replace("'^.function \\$[a-zA-Z0-9_]+\('u", '', $closure);
+		$a = preg_replace("'^.function {$this->varRx}\('u", '', $closure);
 		$a = $this->replace_keys_by_values($this->strings, $a);
-		if (preg_match_all("#\.?\\$[a-zA-Z0-9_]+#u", $a, $w))
+		if (preg_match_all("#\.?{$this->varRx}#u", $a, $w))
 		{
 			foreach ($w[0] as $k) @$tree['used'][$k]++;
 		}
@@ -202,7 +203,7 @@ class jsquiz
 		{
 			foreach ($w[0] as $a)
 			{
-				if (preg_match("'^.function (\\$[a-zA-Z0-9_]+)\('u", $this->closures[$a], $w))
+				if (preg_match("'^.function ({$this->varRx})\('u", $this->closures[$a], $w))
 				{
 					$tree['local'][$w[1]] = 0;
 					@$tree['used'][$w[1]]++;
@@ -263,7 +264,7 @@ class jsquiz
 		}
 
 		$tree['code'] = $this->replace_keys_by_values($this->strings, $tree['code']);
-		$tree['code'] = preg_replace("#\.?\\$[a-zA-Z0-9_]+#eu", 'isset($tree["local"][\'$0\']) ? $tree["local"][\'$0\'] : \'$0\'', $tree['code']);
+		$tree['code'] = preg_replace("#\.?{$this->varRx}#eu", 'isset($tree["local"][\'$0\']) ? $tree["local"][\'$0\'] : \'$0\'', $tree['code']);
 	}
 
 	protected function getVars($closure)
@@ -273,7 +274,7 @@ class jsquiz
 		if (preg_match("'\((.*?)\)'iu", $closure, $v))
 		{
 			$v = explode(',', $v[1]);
-			foreach ($v as $w) if (preg_match("'^\\$[a-zA-Z0-9_]+$'u", $w)) $vars[$w] = 0;
+			foreach ($v as $w) if (preg_match("'^{$this->varRx}$'u", $w)) $vars[$w] = 0;
 		}
 
 		if (preg_match_all("'[^\\$\.a-zA-Z0-9_]var ([^;]+)'iu", $closure, $v))
@@ -284,7 +285,7 @@ class jsquiz
 			$v = preg_replace("'\{.*?\}'u", '', $v);
 			$v = preg_replace("'\[.*?\]'u", '', $v);
 			$v = explode(',', $v);
-			foreach ($v AS $w) if (preg_match("'^\\$[a-zA-Z0-9_]+'u", $w, $v)) $vars[$v[0]] = 0;
+			foreach ($v AS $w) if (preg_match("'^{$this->varRx}'u", $w, $v)) $vars[$v[0]] = 0;
 		}
 
 		return $vars;
