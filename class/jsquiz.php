@@ -247,19 +247,59 @@ class jsquiz
 		}
 	}
 
-	protected function renameVars(&$tree)
+	protected function renameVars(&$tree, $root = true)
 	{
-		arsort($tree['local']);
 		$this->_getNextName(true);
 
-		foreach (array_keys($tree['local']) as $var)
+		if ($root)
 		{
-			$tree['local'][$var] = (substr($var, 0, 1)=='.' ? '.' : '') . $this->_getNextName(array_flip($tree['used']));
+			foreach (array_keys($tree['local']) as $var)
+			{
+				if ('.' != substr($var, 0, 1) && isset($tree['local'][".{$var}"])) $tree['local'][$var] += $tree['local'][".{$var}"];
+			}
+
+			foreach (array_keys($tree['local']) as $var)
+			{
+				if ('.' == substr($var, 0, 1) && isset($tree['local'][substr($var, 1)])) $tree['local'][$var] = $tree['local'][substr($var, 1)];
+			}
+
+			arsort($tree['local']);
+
+			foreach (array_keys($tree['local']) as $var)
+			{
+				switch (substr($var, 0, 1))
+				{
+					case '.':
+						if (!isset($tree['local'][substr($var, 1)]))
+						{
+							$tree['local'][$var] = '#' . $this->_getNextName(array_flip($tree['used']));
+						}
+						break;
+
+					case '#': break;
+
+					default:
+						$root = $this->_getNextName(array_flip($tree['used']));
+						$tree['local'][$var] = $root;
+						if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $root;
+				}
+			}
+
+			foreach (array_keys($tree['local']) as $var) $tree['local'][$var] = preg_replace("'^#'u", '.', $tree['local'][$var]);
+		}
+		else
+		{
+			arsort($tree['local']);
+
+			foreach (array_keys($tree['local']) as $var)
+			{
+				$tree['local'][$var] = $this->_getNextName(array_flip($tree['used']));
+			}
 		}
 
 		foreach (array_keys($tree['childs']) as $var)
 		{
-			$this->renameVars($tree['childs'][$var]);
+			$this->renameVars($tree['childs'][$var], false);
 			$tree['code'] = str_replace($var, $tree['childs'][$var]['code'], $tree['code']);
 		}
 
