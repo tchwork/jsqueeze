@@ -15,7 +15,7 @@ class jsquiz
 	protected $known = array();
 	protected $data = array();
 	protected $counter;
-	protected $varRx = '\\$[a-zA-Z_][a-zA-Z0-9_]*';
+	protected $varRx = '(?<![a-zA-Z0-9_])\\$[a-zA-Z_][a-zA-Z0-9_]*';
 
 	public function addFile($filename)
 	{
