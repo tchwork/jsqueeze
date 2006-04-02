@@ -40,8 +40,8 @@ class jsquiz
 		$key = "//''\"\"f0'";
 		$this->closures[$key] =& $code;
 
-		$tree = array();
-		$this->makeVars($code, $tree[$key] = array('parent' => false));
+		$tree = array($key => array('parent' => false));
+		$this->makeVars($code, $tree[$key]);
 
 		$this->renameVars($tree[$key]);
 
@@ -243,7 +243,8 @@ class jsquiz
 		{
 			foreach ($w[0] as $a)
 			{
-				$this->makeVars($this->closures[$a], $tree['childs'][$a] = array('parent' => &$tree));
+				$tree['childs'][$a] = array('parent' => &$tree);
+				$this->makeVars($this->closures[$a], $tree['childs'][$a]);
 			}
 		}
 	}
