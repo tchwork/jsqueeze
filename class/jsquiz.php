@@ -19,7 +19,7 @@ class jsquiz
 
 	public function addFile($filename)
 	{
-		$this->data[] = file_get_contents($filename, true);
+		$this->data[] = file_get_contents( resolvePath($filename) );
 	}
 	public function addJs($code) {$this->data[] =& $code;}
 
