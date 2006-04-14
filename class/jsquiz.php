@@ -2,7 +2,7 @@
 
 /*
 * This class obfuscate javascript code
-* 
+*
 * Every var whose name/method begins with a "$" will be replaced by a shorter one, typicaly a single letter.
 * Comments will be removed
 * White chars will be stripped
@@ -228,9 +228,9 @@ class jsquiz
 					break;
 				}
 			} while ($k['parent'] && $k =& $k['parent']);
-			
+
 			if ($a && !$k['parent']) @$k['local'][$w] += $a;
-			
+
 			if (isset($tree['used'][$w]) && isset($k['local'][$w])) foreach ($chain as $a => $b)
 			{
 				if (!isset($chain[$a]['local'][$w])) $chain[$a]['used'][$w] =& $k['local'][$w];
@@ -355,7 +355,7 @@ class jsquiz
 
 		return !(isset($this->known[$name]) || isset($exclude[$name])) ? $name : $this->_getNextName($exclude);
 	}
-	
+
 	protected function replace_keys_by_values(&$array, $str)
 	{
 		return str_replace(array_keys($array), array_values($array), $str);
