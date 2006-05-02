@@ -248,11 +248,11 @@ class jsquiz
 		}
 	}
 
-	protected function renameVars(&$tree, $root = true)
+	protected function renameVars(&$tree, $home = true)
 	{
 		$this->_getNextName(true);
 
-		if ($root)
+		if ($home)
 		{
 			foreach (array_keys($tree['local']) as $var)
 			{
@@ -280,9 +280,9 @@ class jsquiz
 					case '#': break;
 
 					default:
-						$root = $this->_getNextName(array_flip($tree['used']));
-						$tree['local'][$var] = $root;
-						if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $root;
+						$home = $this->_getNextName(array_flip($tree['used']));
+						$tree['local'][$var] = $home;
+						if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $home;
 				}
 			}
 
