@@ -31,8 +31,6 @@ class jsquiz
 			implode("\n", $this->data)
 		);
 
-		if (defined('DEBUG') && DEBUG) return $code;
-
 		list($code, $this->strings) = $this->extractStrings($code);
 
 		list($code, $this->closures) = $this->extractClosures($code);
