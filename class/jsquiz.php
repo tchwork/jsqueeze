@@ -12,18 +12,14 @@
 
 class jsquiz
 {
-	protected $known = array();
-	protected $data = array();
-	protected $counter;
-	protected $varRx = '(?<![a-zA-Z0-9_])\\$[a-zA-Z_][a-zA-Z0-9_]*';
+	$known = array();
+	$data = array();
+	$counter;
+	$varRx = '(?<![a-zA-Z0-9_])\\$[a-zA-Z_][a-zA-Z0-9_]*';
 
-	public function addFile($filename)
-	{
-		$this->data[] = file_get_contents( resolvePath($filename) );
-	}
-	public function addJs($code) {$this->data[] =& $code;}
+	function addJs($code) {$this->data[] =& $code;}
 
-	public function get()
+	function get()
 	{
 		$code = str_replace(
 			array("\r\n", "\r"),
@@ -46,7 +42,7 @@ class jsquiz
 		return substr($tree[$key]['code'], 1);
 	}
 
-	protected function extractStrings($f)
+	function extractStrings($f)
 	{
 		$code = '';
 		$strings = array();
@@ -142,12 +138,12 @@ class jsquiz
 		$code = preg_replace("'\};(else|catch|finally|while)'", '}$1', $code);
 		$code = preg_replace("';{2,}'u", ';', $code);
 		$code = str_replace(';}', '}', $code);
-		$code = str_replace(';', ";\n", $code); // This is not mandatory, but VERY usefull for debugging !
+		$code = str_replace(';', ";\n", $code); // This prevents IE from bugging, and is VERY usefull for debugging !
 
 		return array($code, $strings);
 	}
 
-	protected function extractClosures($code)
+	function extractClosures($code)
 	{
 		$code = ';' . $code;
 
@@ -181,7 +177,7 @@ class jsquiz
 		return array($f[0], $closures);
 	}
 
-	protected function makeVars($closure, &$tree)
+	function makeVars($closure, &$tree)
 	{
 		$tree['code'] = $closure;
 
@@ -246,7 +242,7 @@ class jsquiz
 		}
 	}
 
-	protected function renameVars(&$tree, $home = true)
+	function renameVars(&$tree, $home = true)
 	{
 		$this->_getNextName(true);
 
@@ -306,7 +302,7 @@ class jsquiz
 		$tree['code'] = preg_replace("#\.?{$this->varRx}#eu", 'isset($tree["local"][\'$0\']) ? $tree["local"][\'$0\'] : \'$0\'', $tree['code']);
 	}
 
-	protected function getVars($closure)
+	function getVars($closure)
 	{
 		$vars = array();
 
@@ -330,7 +326,7 @@ class jsquiz
 		return $vars;
 	}
 
-	protected function _getNextName($exclude = array())
+	function _getNextName($exclude = array())
 	{
 		if ($exclude===true) return $this->counter = -1;
 		else $this->counter++;
@@ -353,7 +349,7 @@ class jsquiz
 		return !(isset($this->known[$name]) || isset($exclude[$name])) ? $name : $this->_getNextName($exclude);
 	}
 
-	protected function replace_keys_by_values(&$array, $str)
+	function replace_keys_by_values(&$array, $str)
 	{
 		return str_replace(array_keys($array), array_values($array), $str);
 	}
