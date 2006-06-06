@@ -12,10 +12,10 @@
 
 class jsquiz
 {
-	$known = array();
-	$data = array();
-	$counter;
-	$varRx = '(?<![a-zA-Z0-9_])\\$[a-zA-Z_][a-zA-Z0-9_]*';
+	var $known = array();
+	var $data = array();
+	var $counter;
+	var $varRx = '(?<![a-zA-Z0-9_])\\$[a-zA-Z_][a-zA-Z0-9_]*';
 
 	function addJs($code) {$this->data[] =& $code;}
 
