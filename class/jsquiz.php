@@ -1,13 +1,13 @@
 <?php
 
 /*
-* This class obfuscate javascript code
+* This class obfuscates javascript code
 *
 * Every var whose name/method begins with a "$" will be replaced by a shorter one, typicaly a single letter.
 * Comments will be removed
 * White chars will be stripped
 *
-* Works with all JavaScript code, except for code like (i++ + 2) which will become (i+++2)
+* Works with any valid JavaScript code as long as all semi-colons are there, except for code like (i++ + 2) which will become (i+++2)
 */
 
 class jsquiz
