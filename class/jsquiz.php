@@ -150,8 +150,7 @@ class jsquiz
 	{
 		$code = ';' . $code;
 
-		preg_match_all("'[^a-z0-9_\\$]([a-z_][a-z0-9_\\$]*)'iu", $code, $this->known);
-		$this->known = array_flip($this->known[1]);
+		$this->known = preg_match_all("'\.([a-z_][a-z0-9_\\$]*)'iu", $code, $i) ? $i[1] : array();
 
 		$f = preg_split("'([^\\$\.a-zA-Z0-9_]function[ \(].*?\{)'u", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 		$i = count($f)-1;
@@ -176,6 +175,10 @@ class jsquiz
 			$f[$i-2] .= $fK . substr($f[$i], $j);
 			$i -= 2;
 		}
+
+		if (preg_match_all("'[^a-z0-9_\\$\"]([a-z_][a-z0-9_\\$]*)'iu", $f[0], $i)) $this->known = array_merge($this->known, $i[1]);
+
+		$this->known = array_flip($this->known);
 
 		return array($f[0], $closures);
 	}
