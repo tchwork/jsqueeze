@@ -108,7 +108,7 @@ class jsquiz
 					else
 					{
 						$a = substr(trim($code), -1);
-						if (strpos('-!%&;<=>~:^+|,(*?[{', $a)!==false)
+						if (strpos('-!%&;<=>~:^+|,(*?[{n', $a)!==false)
 						{
 							$instr = $f[$i];
 							$key = "//''\"\"" . $K . $instr;
