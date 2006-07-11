@@ -12,7 +12,7 @@
 
 class jsquiz
 {
-	function jsquiz()
+	function __construct() // rename to "jsquiz" for PHP4 compatibility
 	{
 		$this->known = array();
 		$this->data = array();
