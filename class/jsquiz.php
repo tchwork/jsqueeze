@@ -10,9 +10,9 @@
 * Works with any valid JavaScript code as long as all semi-colons are there, except for code like (i++ + 2) which will become (i+++2)
 */
 
-class jsquiz
+class
 {
-	function __construct() // rename to "jsquiz" for PHP4 compatibility
+	function __construct()
 	{
 		$this->known = array();
 		$this->data = array();
