@@ -137,7 +137,7 @@ class
 		$code = str_replace("\n", '', $code);
 		$code = preg_replace("'\s+'u", ' ', $code);
 		$code = preg_replace("' ?([-!%&;<=>~:\\/\\^\\+\\|\\,\\(\\)\\*\\?\\[\\]\\{\\}]+) ?'u", '$1', $code);
-		$code = preg_replace("'\}([^:,;\]\}\)]|$)'u", '};$1', $code);
+		$code = preg_replace("'\}([^:,;\.\(\)\[\]\{\}]|$)'u", '};$1', $code);
 		$code = preg_replace("'\};(else|catch|finally|while)'", '}$1', $code);
 		$code = preg_replace("';{2,}'u", ';', $code);
 		$code = str_replace(';}', '}', $code);
