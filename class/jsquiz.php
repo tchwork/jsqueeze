@@ -3,7 +3,7 @@
 /*
 * This class obfuscates javascript code
 *
-* Every var whose name/method begins with a "$" will be replaced by a shorter one, typicaly a single letter.
+* Every var whose name/method begins with one or more "$" or a single "_" will be replaced by a shorter one, typicaly a single letter.
 * Comments will be removed
 * White chars will be stripped
 *
@@ -17,7 +17,7 @@ class
 		$this->known = array();
 		$this->data = array();
 		$this->counter = 0;
-		$this->varRx = '(?<![a-zA-Z0-9_])\\$[a-zA-Z_][a-zA-Z0-9_]*';
+		$this->varRx = '(?<![a-zA-Z0-9_\$])(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
 	}
 
 	function addJs($code) {$this->data[] =& $code;}
@@ -42,7 +42,10 @@ class
 
 		$this->renameVars($tree[$key]);
 
-		return substr($tree[$key]['code'], 1);
+		$code = substr($tree[$key]['code'], 1);
+		$code = str_replace(array_keys($this->strings), array_values($this->strings), $code);
+
+		return $code;
 	}
 
 	function extractStrings($f)
@@ -54,7 +57,7 @@ class
 		$instr = false;
 
 		$len = strlen($f);
-		for ($i=0; $i<$len; $i++)
+		for ($i=0; $i<$len; ++$i)
 		{
 			if ($instr)
 			{
@@ -68,7 +71,7 @@ class
 					{
 						if ($f[$i+1]=='/')
 						{
-							$i++;
+							++$i;
 							$instr = false;
 						}
 					}
@@ -82,11 +85,11 @@ class
 				else if ($instr=='*') ;
 				else if ($f[$i]=='\\')
 				{
-					if ($f[$i+1]=="\n") $i++;
+					if ($f[$i+1]=="\n") ++$i;
 					else
 					{
 						$s .= $f[$i];
-						$i++;
+						++$i;
 						$s .= $f[$i];
 					}
 				}
@@ -97,12 +100,12 @@ class
 				case '/':
 					if ($f[$i+1]=='*')
 					{
-						$i++;
+						++$i;
 						$instr = '*';
 					}
 					else if ($f[$i+1]=='/')
 					{
-						$i++;
+						++$i;
 						$instr = '//';
 					}
 					else
@@ -115,7 +118,7 @@ class
 							$strings[$key] = $instr;
 							$code .= $key;
 							$s =& $strings[$key];
-							$K++;
+							++$K;
 						}
 						else $code .= $f[$i];
 					}
@@ -127,7 +130,7 @@ class
 					$strings[$key] = $instr;
 					$code .= $key;
 					$s =& $strings[$key];
-					$K++;
+					++$K;
 					break;
 				default:
 					$code .= $f[$i];
@@ -150,9 +153,9 @@ class
 	{
 		$code = ';' . $code;
 
-		$this->known = preg_match_all("'\.([a-z_][a-z0-9_\\$]*)'iu", $code, $i) ? $i[1] : array();
+		$this->known = preg_match_all("'\.([a-z][a-z0-9_\$]*)'iu", $code, $i) ? $i[1] : array();
 
-		$f = preg_split("'([^\\$\.a-zA-Z0-9_]function[ \(].*?\{)'u", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
+		$f = preg_split("'([^\$\.a-zA-Z0-9_]function[ \(].*?\{)'u", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 		$i = count($f)-1;
 		$closures = array();
 
@@ -167,7 +170,7 @@ class
 			{
 				$fS .= $s = $f[$i][$j];
 				$c += $s=='{' ? 1 : ($s=='}' ? -1 : 0);
-				$j++;
+				++$j;
 			}
 
 			$closures[$fK] = $fS;
@@ -176,7 +179,7 @@ class
 			$i -= 2;
 		}
 
-		if (preg_match_all("'[^a-z0-9_\\$\"]([a-z_][a-z0-9_\\$]*)'iu", $f[0], $i)) $this->known = array_merge($this->known, $i[1]);
+		if (preg_match_all("'[^a-z0-9_\$\"]([a-z][a-z0-9_\$]*)'iu", $f[0], $i)) $this->known = array_merge($this->known, $i[1]);
 
 		$this->known = array_flip($this->known);
 
@@ -193,10 +196,9 @@ class
 		# Get all used vars, local and non-local
 		$tree['used'] = array();
 		$a = preg_replace("'^.function {$this->varRx}\('u", '', $closure);
-		$a = $this->replace_keys_by_values($this->strings, $a);
 		if (preg_match_all("#\.?{$this->varRx}#u", $a, $w))
 		{
-			foreach ($w[0] as $k) @$tree['used'][$k]++;
+			foreach ($w[0] as $k) @++$tree['used'][$k];
 		}
 
 		if (preg_match_all("#//''\"\"f\d+'#u", $closure, $w))
@@ -206,10 +208,19 @@ class
 				if (preg_match("'^.function ({$this->varRx})\('u", $this->closures[$a], $w))
 				{
 					$tree['local'][$w[1]] = 0;
-					@$tree['used'][$w[1]]++;
+					@++$tree['used'][$w[1]];
 				}
 			}
 		}
+
+		foreach ($this->strings as $a)
+		{
+			if (("'" == $a[0] || '"' == $a[0]) && preg_match_all("#\.?{$this->varRx}#u", $a, $w))
+			{
+				foreach ($w[0] as $k) isset($tree['used'][$k]) && @++$tree['used'][$k];
+			}
+		}
+
 
 		# Propagate the usage number to parents
 		foreach ($tree['used'] as $w => $a)
@@ -304,8 +315,22 @@ class
 			$tree['code'] = str_replace($var, $tree['childs'][$var]['code'], $tree['code']);
 		}
 
-		$tree['code'] = $this->replace_keys_by_values($this->strings, $tree['code']);
-		$tree['code'] = preg_replace("#\.?{$this->varRx}#eu", 'isset($tree["local"][\'$0\']) ? $tree["local"][\'$0\'] : \'$0\'', $tree['code']);
+		$tree['code'] = preg_replace("#\.?{$this->varRx}#eu", "isset(\$tree['local']['$0']) ? \$tree['local']['$0'] : '$0'", $tree['code']);
+
+
+		$this->local_tree =& $tree['local'];
+
+		preg_replace_callback("#//''\"\"[0-9]+['\"]#u", array($this, 'renameInString'), $tree['code']);
+	}
+
+	function renameInString($a)
+	{
+		$a = $a[0];
+		$tree =& $this->local_tree;
+
+		$this->strings[$a] = preg_replace("#\.?{$this->varRx}#ue", "isset(\$tree['$0']) ? \$tree['$0'] : '$0'", $this->strings[$a]);
+
+		return '';
 	}
 
 	function getVars($closure)
@@ -318,7 +343,7 @@ class
 			foreach ($v as $w) if (preg_match("'^{$this->varRx}$'u", $w)) $vars[$w] = 0;
 		}
 
-		if (preg_match_all("'[^\\$\.a-zA-Z0-9_]var ([^;]+)'iu", $closure, $v))
+		if (preg_match_all("'[^\$\.a-zA-Z0-9_]var ([^;]+)'iu", $closure, $v))
 		{
 			$v = implode(',', $v[1]);
 
@@ -335,12 +360,12 @@ class
 	function _getNextName($exclude = array())
 	{
 		if ($exclude===true) return $this->counter = -1;
-		else $this->counter++;
+		else ++$this->counter;
 
-		$str0 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_';
+		$str0 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 		$len0 = strlen($str0);
 
-		$str1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz0123456789';
+		$str1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 		$len1 = strlen($str1);
 
 		$name = $str0[$this->counter % $len0];
@@ -353,10 +378,5 @@ class
 		}
 
 		return !(isset($this->known[$name]) || isset($exclude[$name])) ? $name : $this->_getNextName($exclude);
-	}
-
-	function replace_keys_by_values(&$array, $str)
-	{
-		return str_replace(array_keys($array), array_values($array), $str);
 	}
 }
