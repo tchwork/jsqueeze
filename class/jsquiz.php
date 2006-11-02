@@ -36,11 +36,9 @@ class
 
 	function get()
 	{
-		$code = str_replace(
-			array("\r\n", "\r"),
-			array("\n"  , "\n"),
-			implode("\n", $this->data)
-		);
+		$code = implode("\n", $this->data);
+
+		if (false !== strpos($code, "\r")) $code = str_replace(array("\r\n", "\r"), array("\n"  , "\n"), $code);
 
 		list($code, $this->strings) = $this->extractStrings($code);
 
@@ -229,7 +227,7 @@ class
 		{
 			if (("'" == $a[0] || '"' == $a[0]) && preg_match_all("#\.?{$this->varRx}#u", $a, $w))
 			{
-				foreach ($w[0] as $k) isset($tree['used'][$k]) && @++$tree['used'][$k];
+				foreach ($w[0] as $k) isset($tree['used'][$k]) && ++$tree['used'][$k];
 			}
 		}
 
@@ -245,13 +243,19 @@ class
 				if (isset($k['local'][$w]))
 				{
 					unset($k['used'][$w]);
-					@$k['local'][$w] += $a;
+					if (isset($k['local'][$w])) $k['local'][$w] += $a;
+					else $k['local'][$w] = $a;
 					$a = false;
 					break;
 				}
-			} while ($k['parent'] && $k =& $k['parent']);
+			}
+			while ($k['parent'] && $k =& $k['parent']);
 
-			if ($a && !$k['parent']) @$k['local'][$w] += $a;
+			if ($a && !$k['parent'])
+			{
+				if (isset($k['local'][$w])) $k['local'][$w] += $a;
+				else $k['local'][$w] = $a;
+			}
 
 			if (isset($tree['used'][$w]) && isset($k['local'][$w])) foreach ($chain as $a => $b)
 			{
