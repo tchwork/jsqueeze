@@ -38,7 +38,7 @@ class
 	{
 		$code = implode("\n", $this->data);
 
-		if (false !== strpos($code, "\r")) $code = str_replace(array("\r\n", "\r"), array("\n"  , "\n"), $code);
+		if (false !== strpos($code, "\r")) $code = strtr(str_replace("\r\n", "\n", $code), "\r", "\n");
 
 		list($code, $this->strings) = $this->extractStrings($code);
 
