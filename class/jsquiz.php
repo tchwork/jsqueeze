@@ -19,12 +19,12 @@
 * Comments will be removed
 * White chars will be stripped
 *
-* Works with any valid JavaScript code as long as all semi-colons are there, except for code like (i++ + 2) which will become (i+++2)
+* Works with any valid JavaScript code as long as all semicolons are there.
 */
 
-class
+class jsquiz
 {
-	function __construct()
+	function jsquiz()
 	{
 		$this->known = array();
 		$this->data = array();
@@ -67,19 +67,19 @@ class
 		$instr = false;
 
 		$len = strlen($f);
-		for ($i=0; $i<$len; ++$i)
+		for ($i = 0; $i < $len; ++$i)
 		{
 			if ($instr)
 			{
-				if ($instr=='//')
+				if ('//' == $instr)
 				{
-					if ($f[$i]=="\n") $instr = false;
+					if ("\n" == $f[$i]) $instr = false;
 				}
-				else if ($f[$i]==$instr)
+				else if ($f[$i] == $instr)
 				{
-					if ($instr=='*')
+					if ('*' == $instr)
 					{
-						if ($f[$i+1]=='/')
+						if ('/' == $f[$i+1])
 						{
 							++$i;
 							$instr = false;
@@ -87,15 +87,15 @@ class
 					}
 					else
 					{
-						if ($instr == '/') while (strpos('gmi', $f[$i+1])!==false) $s .= $f[$i++];
+						if ('/' == $instr) while (false !== strpos('gmi', $f[$i+1])) $s .= $f[$i++];
 						$instr = false;
 						$s .= $f[$i];
 					}
 				}
-				else if ($instr=='*') ;
-				else if ($f[$i]=='\\')
+				else if ('*' == $instr) ;
+				else if ('\\' == $f[$i])
 				{
-					if ($f[$i+1]=="\n") ++$i;
+					if ("\n" == $f[$i+1]) ++$i;
 					else
 					{
 						$s .= $f[$i];
@@ -107,52 +107,60 @@ class
 			}
 			else switch ($f[$i])
 			{
-				case '/':
-					if ($f[$i+1]=='*')
+			case '/':
+				if ('*' == $f[$i+1])
+				{
+					++$i;
+					$instr = '*';
+				}
+				else if ('/' == $f[$i+1])
+				{
+					++$i;
+					$instr = '//';
+				}
+				else
+				{
+					$a = substr(trim($code), -1);
+					if (false !== strpos('-!%&;<=>~:^+|,(*?[{n', $a))
 					{
-						++$i;
-						$instr = '*';
+						$instr = $f[$i];
+						$key = "//''\"\"" . $K . $instr;
+						$strings[$key] = $instr;
+						$code .= $key;
+						$s =& $strings[$key];
+						++$K;
 					}
-					else if ($f[$i+1]=='/')
-					{
-						++$i;
-						$instr = '//';
-					}
-					else
-					{
-						$a = substr(trim($code), -1);
-						if (strpos('-!%&;<=>~:^+|,(*?[{n', $a)!==false)
-						{
-							$instr = $f[$i];
-							$key = "//''\"\"" . $K . $instr;
-							$strings[$key] = $instr;
-							$code .= $key;
-							$s =& $strings[$key];
-							++$K;
-						}
-						else $code .= $f[$i];
-					}
-					break;
-				case "'":
-				case '"':
-					$instr = $f[$i];
-					$key = "//''\"\"" . $K . $instr;
-					$strings[$key] = $instr;
-					$code .= $key;
-					$s =& $strings[$key];
-					++$K;
-					break;
-				default:
-					$code .= $f[$i];
+					else $code .= $f[$i];
+				}
+				break;
+
+			case "'":
+			case '"':
+				$instr = $f[$i];
+				$key = "//''\"\"" . $K . $instr;
+				$strings[$key] = $instr;
+				$code .= $key;
+				$s =& $strings[$key];
+				++$K;
+				break;
+
+			default:
+				$code .= $f[$i];
 			}
 		}
 
 		$code = str_replace("\n", '', $code);
-		$code = preg_replace("'\s+'u", ' ', $code);
-		$code = preg_replace("' ?([-!%&;<=>~:\\/\\^\\+\\|\\,\\(\\)\\*\\?\\[\\]\\{\\}]+) ?'u", '$1', $code);
+		$code = preg_replace("'[ \t]+'", ' ', $code);
+		$code = str_replace('#', '##', $code);
+		$code = str_replace('- -', '-#-', $code);
+		$code = str_replace('+ +', '+#+', $code);
+		$code = preg_replace("' ?([-!%&;<=>~:\\/\\^\\+\\|\\,\\(\\)\\*\\?\\[\\]\\{\\}]+) ?'", '$1', $code);
+		$code = str_replace('-#-', '- -', $code);
+		$code = str_replace('+#+', '+ +', $code);
+		$code = str_replace('##', '#', $code);
 		$code = preg_replace("'\}([^:,;\.\(\)\]\}]|$)'u", '};$1', $code);
-		$code = preg_replace("'\};(else|catch|finally|while)'", '}$1', $code);
-		$code = preg_replace("';{2,}'u", ';', $code);
+		$code = preg_replace("'\};(else|catch|finally|while)(?=[^\$\.a-zA-Z0-9_])'", '}$1', $code);
+		$code = preg_replace("'(?<!\();{2,}'", ';', $code);
 		$code = str_replace(';}', '}', $code);
 		$code = str_replace(';', ";\n", $code); // This prevents IE from bugging, and is VERY usefull for debugging !
 
@@ -163,9 +171,9 @@ class
 	{
 		$code = ';' . $code;
 
-		$this->known = preg_match_all("'\.([a-z][a-z0-9_\$]*)'iu", $code, $i) ? $i[1] : array();
+		$this->known = preg_match_all("'\.([a-z][a-z0-9_\$]*)'i", $code, $i) ? $i[1] : array();
 
-		$f = preg_split("'([^\$\.a-zA-Z0-9_]function[ \(].*?\{)'u", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
+		$f = preg_split("'([^\$\.a-zA-Z0-9_]function[ \(].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 		$i = count($f)-1;
 		$closures = array();
 
@@ -176,10 +184,11 @@ class
 			$l = strlen($f[$i]);
 			$fK = "//''\"\"f$i'";
 			$fS = $f[$i-1];
+
 			while ($c && $j<$l)
 			{
 				$fS .= $s = $f[$i][$j];
-				$c += $s=='{' ? 1 : ($s=='}' ? -1 : 0);
+				$c += '{' == $s ? 1 : ('}' == $s ? -1 : 0);
 				++$j;
 			}
 
@@ -189,7 +198,7 @@ class
 			$i -= 2;
 		}
 
-		if (preg_match_all("'[^a-z0-9_\$\"]([a-z][a-z0-9_\$]*)'iu", $f[0], $i)) $this->known = array_merge($this->known, $i[1]);
+		if (preg_match_all("'[^a-z0-9_\$\"]([a-z][a-z0-9_\$]*)'i", $f[0], $i)) $this->known = array_merge($this->known, $i[1]);
 
 		$this->known = array_flip($this->known);
 
@@ -205,17 +214,17 @@ class
 
 		# Get all used vars, local and non-local
 		$tree['used'] = array();
-		$a = preg_replace("'^.function {$this->varRx}\('u", '', $closure);
-		if (preg_match_all("#\.?{$this->varRx}#u", $a, $w))
+		$a = preg_replace("'^.function {$this->varRx}\('", '', $closure);
+		if (preg_match_all("#\.?{$this->varRx}#", $a, $w))
 		{
 			foreach ($w[0] as $k) @++$tree['used'][$k];
 		}
 
-		if (preg_match_all("#//''\"\"f\d+'#u", $closure, $w))
+		if (preg_match_all("#//''\"\"f\d+'#", $closure, $w))
 		{
 			foreach ($w[0] as $a)
 			{
-				if (preg_match("'^.function ({$this->varRx})\('u", $this->closures[$a], $w))
+				if (preg_match("'^.function ({$this->varRx})\('", $this->closures[$a], $w))
 				{
 					$tree['local'][$w[1]] = 0;
 					@++$tree['used'][$w[1]];
@@ -225,7 +234,7 @@ class
 
 		foreach ($this->strings as $a)
 		{
-			if (("'" == $a[0] || '"' == $a[0]) && preg_match_all("#\.?{$this->varRx}#u", $a, $w))
+			if (("'" == $a[0] || '"' == $a[0]) && preg_match_all("#\.?{$this->varRx}#", $a, $w))
 			{
 				foreach ($w[0] as $k) isset($tree['used'][$k]) && ++$tree['used'][$k];
 			}
@@ -265,7 +274,7 @@ class
 
 		# Analyse childs
 		$tree['childs'] = array();
-		if (preg_match_all("#//''\"\"f\d+'#u", $closure, $w))
+		if (preg_match_all("#//''\"\"f\d+'#", $closure, $w))
 		{
 			foreach ($w[0] as $a)
 			{
@@ -293,27 +302,24 @@ class
 
 			arsort($tree['local']);
 
-			foreach (array_keys($tree['local']) as $var)
+			foreach (array_keys($tree['local']) as $var) switch (substr($var, 0, 1))
 			{
-				switch (substr($var, 0, 1))
+			case '.':
+				if (!isset($tree['local'][substr($var, 1)]))
 				{
-					case '.':
-						if (!isset($tree['local'][substr($var, 1)]))
-						{
-							$tree['local'][$var] = '#' . $this->_getNextName(array_flip($tree['used']));
-						}
-						break;
-
-					case '#': break;
-
-					default:
-						$home = $this->_getNextName(array_flip($tree['used']));
-						$tree['local'][$var] = $home;
-						if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $home;
+					$tree['local'][$var] = '#' . $this->_getNextName(array_flip($tree['used']));
 				}
+				break;
+
+			case '#': break;
+
+			default:
+				$home = $this->_getNextName(array_flip($tree['used']));
+				$tree['local'][$var] = $home;
+				if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $home;
 			}
 
-			foreach (array_keys($tree['local']) as $var) $tree['local'][$var] = preg_replace("'^#'u", '.', $tree['local'][$var]);
+			foreach (array_keys($tree['local']) as $var) $tree['local'][$var] = preg_replace("'^#'", '.', $tree['local'][$var]);
 		}
 		else
 		{
@@ -331,12 +337,12 @@ class
 			$tree['code'] = str_replace($var, $tree['childs'][$var]['code'], $tree['code']);
 		}
 
-		$tree['code'] = preg_replace("#\.?{$this->varRx}#eu", "isset(\$tree['local']['$0']) ? \$tree['local']['$0'] : '$0'", $tree['code']);
+		$tree['code'] = preg_replace("#\.?{$this->varRx}#e", "isset(\$tree['local']['$0']) ? \$tree['local']['$0'] : '$0'", $tree['code']);
 
 
 		$this->local_tree =& $tree['local'];
 
-		preg_replace_callback("#//''\"\"[0-9]+['\"]#u", array($this, 'renameInString'), $tree['code']);
+		preg_replace_callback("#//''\"\"[0-9]+['\"]#", array($this, 'renameInString'), $tree['code']);
 	}
 
 	function renameInString($a)
@@ -344,7 +350,7 @@ class
 		$a = $a[0];
 		$tree =& $this->local_tree;
 
-		$this->strings[$a] = preg_replace("#\.?{$this->varRx}#ue", "isset(\$tree['$0']) ? \$tree['$0'] : '$0'", $this->strings[$a]);
+		$this->strings[$a] = preg_replace("#\.?{$this->varRx}#e", "isset(\$tree['$0']) ? \$tree['$0'] : '$0'", $this->strings[$a]);
 
 		return '';
 	}
@@ -353,21 +359,21 @@ class
 	{
 		$vars = array();
 
-		if (preg_match("'\((.*?)\)'iu", $closure, $v))
+		if (preg_match("'\((.*?)\)'i", $closure, $v))
 		{
 			$v = explode(',', $v[1]);
-			foreach ($v as $w) if (preg_match("'^{$this->varRx}$'u", $w)) $vars[$w] = 0;
+			foreach ($v as $w) if (preg_match("'^{$this->varRx}$'", $w)) $vars[$w] = 0;
 		}
 
-		if (preg_match_all("'[^\$\.a-zA-Z0-9_]var ([^;]+)'iu", $closure, $v))
+		if (preg_match_all("'[^\$\.a-zA-Z0-9_]var ([^;]+)'i", $closure, $v))
 		{
 			$v = implode(',', $v[1]);
 
-			$v = preg_replace("'\(.*?\)'u", '', $v);
-			$v = preg_replace("'\{.*?\}'u", '', $v);
-			$v = preg_replace("'\[.*?\]'u", '', $v);
+			$v = preg_replace("'\(.*?\)'", '', $v);
+			$v = preg_replace("'\{.*?\}'", '', $v);
+			$v = preg_replace("'\[.*?\]'", '', $v);
 			$v = explode(',', $v);
-			foreach ($v AS $w) if (preg_match("'^{$this->varRx}'u", $w, $v)) $vars[$v[0]] = 0;
+			foreach ($v as $w) if (preg_match("'^{$this->varRx}'", $w, $v)) $vars[$v[0]] = 0;
 		}
 
 		return $vars;
