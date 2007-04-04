@@ -284,11 +284,11 @@ class jsquiz
 		}
 	}
 
-	function renameVars(&$tree, $home = true)
+	function renameVars(&$tree, $base = true)
 	{
 		$this->_getNextName(true);
 
-		if ($home)
+		if ($base)
 		{
 			foreach (array_keys($tree['local']) as $var)
 			{
@@ -314,9 +314,9 @@ class jsquiz
 			case '#': break;
 
 			default:
-				$home = $this->_getNextName(array_flip($tree['used']));
-				$tree['local'][$var] = $home;
-				if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $home;
+				$base = $this->_getNextName(array_flip($tree['used']));
+				$tree['local'][$var] = $base;
+				if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $base;
 			}
 
 			foreach (array_keys($tree['local']) as $var) $tree['local'][$var] = preg_replace("'^#'", '.', $tree['local'][$var]);
