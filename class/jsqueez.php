@@ -19,11 +19,11 @@
 * Comments will be removed
 * White chars will be stripped
 *
-* Works with most valid JavaScript code as long as all semicolons are there.
+* Works with most valid JavaScript code as long as semicolons are here.
 * Here are some exceptions:
 * - doesn't handle Microsoft conditional comments,
-* - if you use with/eval to affect scope then be careful,
-* - {while(...);} will become {while(...)}, but this bug is hard to fix.
+* - if you use with/eval then be careful,
+* - {while(...);} will become {while(...)}
 */
 
 class jsqueez
