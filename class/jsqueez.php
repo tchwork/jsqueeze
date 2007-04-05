@@ -19,12 +19,16 @@
 * Comments will be removed
 * White chars will be stripped
 *
-* Works with any valid JavaScript code as long as all semicolons are there.
+* Works with most valid JavaScript code as long as all semicolons are there.
+* Here are some exceptions:
+* - doesn't handle Microsoft conditional comments,
+* - if you use with/eval to affect scope then be careful,
+* - {while(...);} will become {while(...)}, but this bug is hard to fix.
 */
 
-class jsquiz
+class jsqueez
 {
-	function jsquiz()
+	function jsqueez()
 	{
 		$this->known = array();
 		$this->data = array();
