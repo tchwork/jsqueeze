@@ -19,7 +19,7 @@
 * Comments will be removed
 * White chars will be stripped
 *
-* Works with most valid JavaScript code as long as semicolons are here.
+* Works with most valid Javascript code as long as semicolons are here.
 * Here are some exceptions:
 * - doesn't handle Microsoft conditional comments,
 * - if you use with/eval then be careful,
