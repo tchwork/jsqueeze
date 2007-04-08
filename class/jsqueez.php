@@ -20,10 +20,7 @@
 * White chars will be stripped
 *
 * Works with most valid Javascript code as long as semicolons are here.
-* Here are some exceptions:
-* - doesn't handle Microsoft conditional comments,
-* - if you use with/eval then be careful,
-* - {while(...);} will become {while(...)}
+* If you use with/eval then be careful.
 */
 
 class jsqueez
@@ -64,7 +61,21 @@ class jsqueez
 
 	function extractStrings($f)
 	{
-		$code = '';
+		$f = trim($f);
+
+		if ('' === $f) return array('', array());
+
+		if ($cc_on = false !== strpos($f, '@cc_on'))
+		{
+			$f = str_replace('#', '##', $f);
+			$f = preg_replace("'/*@cc_on(?![\$\.a-zA-Z0-9_])'", '1#@cc_on', $f);
+			$f = preg_replace("'//@cc_on(?![\$\.a-zA-Z0-9_])'", '2#@cc_on', $f);
+			$f = str_replace('@*/', '@#1', $f);
+		}
+
+		$code = array();
+		$j = 0;
+
 		$strings = array();
 		$K = 0;
 
@@ -91,9 +102,9 @@ class jsqueez
 					}
 					else
 					{
-						if ('/' == $instr) while (false !== strpos('gmi', $f[$i+1])) $s .= $f[$i++];
+						if ('/' == $instr) while (false !== strpos('gmi', $f[$i+1])) $s[] = $f[$i++];
 						$instr = false;
-						$s .= $f[$i];
+						$s[] = $f[$i];
 					}
 				}
 				else if ('*' == $instr) ;
@@ -102,12 +113,12 @@ class jsqueez
 					if ("\n" == $f[$i+1]) ++$i;
 					else
 					{
-						$s .= $f[$i];
+						$s[] = $f[$i];
 						++$i;
-						$s .= $f[$i];
+						$s[] = $f[$i];
 					}
 				}
-				else $s .= $f[$i];
+				else $s[] = $f[$i];
 			}
 			else switch ($f[$i])
 			{
@@ -124,51 +135,125 @@ class jsqueez
 				}
 				else
 				{
-					$a = substr(trim($code), -1);
+					$a = ' ' == $code[$j] ? $code[$j-1] : $code[$j];
 					if (false !== strpos('-!%&;<=>~:^+|,(*?[{n', $a))
 					{
-						$instr = $f[$i];
-						$key = "//''\"\"" . $K . $instr;
-						$strings[$key] = $instr;
-						$code .= $key;
+						$key = "//''\"\"" . $K++ . $instr = $f[$i];
+						$code[++$j] = $key;
+						isset($s) && ($s = implode('', $s)) && $cc_on && $this->_restoreCc($s);
+						$strings[$key] = array($instr);
 						$s =& $strings[$key];
-						++$K;
 					}
-					else $code .= $f[$i];
+					else $code[++$j] = $f[$i];
 				}
+
 				break;
 
 			case "'":
 			case '"':
-				$instr = $f[$i];
-				$key = "//''\"\"" . $K . $instr;
-				$strings[$key] = $instr;
-				$code .= $key;
+				$key = "//''\"\"" . $K++ . $instr = $f[$i];
+				$code[++$j] = $key;
+				isset($s) && ($s = implode('', $s)) && $cc_on && $this->_restoreCc($s);
+				$strings[$key] = array($instr);
 				$s =& $strings[$key];
-				++$K;
 				break;
 
+			case "\n":
+				break;
+
+			case "\t": $f[$i] = ' ';
+			case ' ':
+				if (' ' == $code[$j]) break;
+
 			default:
-				$code .= $f[$i];
+				$code[++$j] = $f[$i];
 			}
 		}
 
-		$code = str_replace("\n", '', $code);
-		$code = preg_replace("'[ \t]+'", ' ', $code);
-		$code = str_replace('#', '##', $code);
+		isset($s) && ($s = implode('', $s)) && $cc_on && $this->_restoreCc($s);
+		unset($s);
+
+		$code = implode('', $code);
+		$cc_on && $this->_restoreCc($code);
+
 		$code = str_replace('- -', '-#-', $code);
 		$code = str_replace('+ +', '+#+', $code);
 		$code = preg_replace("' ?([-!%&;<=>~:\\/\\^\\+\\|\\,\\(\\)\\*\\?\\[\\]\\{\\}]+) ?'", '$1', $code);
 		$code = str_replace('-#-', '- -', $code);
 		$code = str_replace('+#+', '+ +', $code);
-		$code = str_replace('##', '#', $code);
-		$code = preg_replace("'\}([^:,;\.\(\)\]\}]|$)'u", '};$1', $code);
-		$code = preg_replace("'\};(else|catch|finally|while)(?=[^\$\.a-zA-Z0-9_])'", '}$1', $code);
-		$code = preg_replace("'(?<!\();{2,}'", ';', $code);
-		$code = str_replace(';}', '}', $code);
-		$code = str_replace(';', ";\n", $code); // This prevents IE from bugging, and is VERY usefull for debugging !
 
-		return array($code, $strings);
+		false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?=(\(\)|[;\]\)\},:]))'", '[]', $code);
+		false !== strpos($code, 'new Object') && $code = preg_replace("'new Object(?=(\(\)|[;\]\)\},:]))'", '{}', $code);
+
+		$code = preg_replace("'\}(?![:,;\.\(\)\]\}]|(else|catch|finally|while)[^\$\.a-zA-Z0-9_])'", '};', $code);
+
+		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])if\('"                    , '1#(', $code);
+		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])for\('"                   , '2#(', $code);
+		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])while\('"                 , '3#(', $code);
+		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])else(?![\$\.a-zA-Z0-9_])'", '4#' , $code);
+
+		$forPool = array();
+		$instrPool = array();
+		$s = 0;
+
+		$f = array();
+		$j = -1;
+
+		$len = strlen($code);
+		for ($i = 0; $i < $len; ++$i)
+		{
+			switch ($code[$i])
+			{
+			case '(':
+				if ("\n" == $f[$j]) $f[$j] = ';';
+
+				++$s;
+
+				if ($i && '#' == $code[$i-1])
+				{
+					$instrPool[$s - 1] = 1;
+					if ('2' == $code[$i-2]) $forPool[$s] = 1;
+				}
+
+				$f[++$j] = '(';
+				break;
+
+			case ')':
+				unset($forPool[$s]);
+				--$s;
+				$f[++$j] = ')';
+				continue 2;
+
+			case '}':
+				if ("\n" == $f[$j]) $f[$j] = '}';
+				else $f[++$j] = '}';
+				break;
+
+			case ';':
+				if (isset($forPool[$s]) || isset($instrPool[$s])) $f[++$j] = ';';
+				else if ("\n" != $f[$j]) $f[++$j] = "\n";
+
+				break;
+
+			case '#':
+				switch ($f[$j])
+				{
+				case '1': $f[$j] = 'if';    break 2;
+				case '2': $f[$j] = 'for';   break 2;
+				case '3': $f[$j] = 'while'; break 2;
+				case '4': $f[$j] = 'else';  continue 2;
+				}
+
+			case '[';
+				if ("\n" == $f[$j]) $f[$j] = ';';
+
+			default: $f[++$j] = $code[$i];
+			}
+
+			unset($instrPool[$s]);
+		}
+
+		return array(implode('', $f), $strings);
 	}
 
 	function extractClosures($code)
@@ -404,5 +489,13 @@ class jsqueez
 		}
 
 		return !(isset($this->known[$name]) || isset($exclude[$name])) ? $name : $this->_getNextName($exclude);
+	}
+
+	function _restoreCc(&$s)
+	{
+		$s = str_replace('@#1', '@*/', $s);
+		$s = str_replace('2#@cc_on', '//@cc_on', $s);
+		$s = str_replace('1#@cc_on', '/*@cc_on', $s);
+		$s = str_replace('##', '#', $s);
 	}
 }
