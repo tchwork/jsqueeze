@@ -85,8 +85,8 @@ class jsqueez
 		if ($cc_on = false !== strpos($f, '@cc_on'))
 		{
 			$f = str_replace('#', '##', $f);
-			$f = preg_replace("'/*@cc_on(?![\$\.a-zA-Z0-9_])'", '1#@cc_on', $f);
-			$f = preg_replace("'//@cc_on(?![\$\.a-zA-Z0-9_])'", '2#@cc_on', $f);
+			$f = preg_replace("'/\*@cc_on(?![\$\.a-zA-Z0-9_])'", '1#@cc_on', $f);
+			$f = preg_replace( "'//@cc_on(?![\$\.a-zA-Z0-9_])'", '2#@cc_on', $f);
 			$f = str_replace('@*/', '@#1', $f);
 		}
 
@@ -337,9 +337,9 @@ class jsqueez
 				{
 					$w =& $tree;
 
-					while (!isset($w['used'][$k]) && isset($w['parent'])) $w =& $w['parent'];
+					while (isset($w['parent']) && !(isset($w['used'][$k]) || isset($w['local'][$k]))) $w =& $w['parent'];
 
-					isset($w['used'][$k]) && @++$tree['used'][$k];
+					(isset($w['used'][$k]) || isset($w['local'][$k])) && @++$tree['used'][$k];
 				}
 
 				unset($w);
