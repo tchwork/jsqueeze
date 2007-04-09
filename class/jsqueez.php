@@ -243,7 +243,7 @@ class jsqueez
 			switch ($code[$i])
 			{
 			case '(':
-				if ("\n" == $f[$j]) $f[$j] = ';';
+				if ($j>=0 && "\n" == $f[$j]) $f[$j] = ';';
 
 				++$s;
 
@@ -276,7 +276,7 @@ class jsqueez
 
 			case ';':
 				if (isset($forPool[$s]) || isset($instrPool[$s])) $f[++$j] = ';';
-				else if ("\n" != $f[$j] && ';' != $f[$j]) $f[++$j] = "\n";
+				else if ($j>=0 && "\n" != $f[$j] && ';' != $f[$j]) $f[++$j] = "\n";
 
 				break;
 
@@ -289,7 +289,7 @@ class jsqueez
 				}
 
 			case '[';
-				if ("\n" == $f[$j]) $f[$j] = ';';
+				if ($j>=0 && "\n" == $f[$j]) $f[$j] = ';';
 
 			default: $f[++$j] = $code[$i];
 			}
