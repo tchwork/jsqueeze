@@ -15,12 +15,16 @@
 /*
 * This class obfuscates javascript code
 *
-* Every var whose name/method begins with one or more "$", or a single "_",
-* will be replaced by a shorter one, typicaly a single letter.
-* Comments will be removed, white chars will be stripped.
+* Removes comments and white chars,
+* Shorten every local vars, and global vars/methods/properties
+* who begins with one or more "$" or a single "_".
+* Shorten also local/global vars found in strings,
+* but only if they are prefixed as above.
 *
-* Works with most valid Javascript code as long as semicolons are here.
-* Deals with Microsoft's conditional comments.
+* Works with most valid Javascript code as long as semi-colons are here
+* (they are optional after function declarations).
+* Respects Microsoft's conditional comments.
+* Three semi-colons (;;;) are treated like single-line comments.
 * If you use eval() then be careful.
 */
 
@@ -83,6 +87,7 @@ class jsqueez
 
 		if ($cc_on = false !== strpos($f, '@cc_on'))
 		{
+			// Protects conditional comments from being removed
 			$f = str_replace('#', '##', $f);
 			$f = preg_replace("'/\*@cc_on(?![\$\.a-zA-Z0-9_])'", '1#@cc_on', $f);
 			$f = preg_replace( "'//@cc_on(?![\$\.a-zA-Z0-9_])([^\n]+)'", '2#@cc_on$1@#3', $f);
@@ -97,6 +102,7 @@ class jsqueez
 
 		$instr = false;
 
+		// Extracts strings, removes comments
 		$len = strlen($f);
 		for ($i = 0; $i < $len; ++$i)
 		{
@@ -139,6 +145,7 @@ class jsqueez
 			else switch ($f[$i])
 			{
 			case ';':
+				// Removes triple semi-colon (see http://dean.edwards.name/packer/2/usage/#triple-semi-colon)
 				if ($i>0 && ';' == $f[$i-1] && $i+1 < $len && ';' == $f[$i+1]) $f[$i] = $f[$i+1] = '/';
 				else
 				{
@@ -200,17 +207,21 @@ class jsqueez
 		$code = implode('', $code);
 		$cc_on && $this->restoreCc($code, false);
 
+		// Remove unwanted spaces
 		$code = str_replace('- -', '-#-', $code);
 		$code = str_replace('+ +', '+#+', $code);
 		$code = preg_replace("' ?([-!%&;<=>~:\\/\\^\\+\\|\\,\\(\\)\\*\\?\\[\\]\\{\\}]+) ?'", '$1', $code);
 		$code = str_replace('-#-', '- -', $code);
 		$code = str_replace('+#+', '+ +', $code);
 
+		// Optimize new Array/Object to []/{}
 		false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?=(\(\)|[;\]\)\},:]))'", '[]', $code);
 		false !== strpos($code, 'new Object') && $code = preg_replace("'new Object(?=(\(\)|[;\]\)\},:]))'", '{}', $code);
 
+		// Add missing semi-colons after curly braces
 		$code = preg_replace("'\}(?![:,;\.\(\)\]\}]|(else|catch|finally|while)[^\$\.a-zA-Z0-9_])'", '};', $code);
 
+		// Tag possible empty instruction for easy detection
 		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])if\('"   , '1#(', $code);
 		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])for\('"  , '2#(', $code);
 		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])while\('", '3#(', $code);
@@ -222,6 +233,7 @@ class jsqueez
 		$f = array();
 		$j = -1;
 
+		// Removes as much semi-colon as possible
 		$len = strlen($code);
 		for ($i = 0; $i < $len; ++$i)
 		{
@@ -277,8 +289,19 @@ class jsqueez
 
 		$f = implode('', $f);
 		$cc_on && $f = str_replace('@#3', "\n", $f);
+
+		// Fix "else ;" empty instructions
 		$f = preg_replace("'(?<![\$\.a-zA-Z0-9_])else\n'", 'else;', $f);
+
+		// Optimize "i++" to "++i" in "for" loops
 		$f = preg_replace("';([^\;\)\n]+)(\+\+|--)\)'", ';$2$1)', $f);
+
+		if (false !== strpos($f, 'throw'))
+		{
+			// Fix for a bug in Safari's parser (see http://forums.asp.net/thread/1585609.aspx)
+			$f = preg_replace("'(?<![\$\.a-zA-Z0-9_])throw[^\$\.a-zA-Z0-9_][^;\}\n]*(?!;)'", '$0;', $f);
+			$f = str_replace(";\n", ';', $f);
+		}
 
 		return array($f, $strings);
 	}
@@ -323,7 +346,7 @@ class jsqueez
 		$tree['code'] = $closure;
 
 
-		# Get all local vars (functions, arguments and "var" prefixed)
+		// Get all local vars (functions, arguments and "var" prefixed)
 
 		$vars = array();
 
@@ -352,7 +375,7 @@ class jsqueez
 		$tree['local'] = $vars;
 
 
-		# Get all used vars, local and non-local
+		// Get all used vars, local and non-local
 
 		$tree['used'] = array();
 		if (preg_match_all("#\.?{$this->varRx}#", $closure, $w))
@@ -378,7 +401,7 @@ class jsqueez
 		}
 
 
-		# Propagate the usage number to parents
+		// Propagate the usage number to parents
 
 		foreach ($tree['used'] as $w => $a)
 		{
@@ -411,7 +434,7 @@ class jsqueez
 		}
 
 
-		# Analyse childs
+		// Analyse childs
 
 		$tree['childs'] = array();
 		if (preg_match_all("@//''\"\"#[0-9]+'@", $closure, $w))
