@@ -20,12 +20,12 @@
 * who begins with one or more "$" or a single "_".
 * Shorten also local/global vars found in strings,
 * but only if they are prefixed as above.
+* If you use eval() then be careful.
 *
-* Works with most valid Javascript code as long as semi-colons are here
-* (they are optional after function declarations).
+* Works with most valid Javascript code.
+* Tolerates some missing semi-colons.
 * Respects Microsoft's conditional comments.
 * Three semi-colons (;;;) are treated like single-line comments.
-* If you use eval() then be careful.
 */
 
 class jsqueez
@@ -49,6 +49,7 @@ class jsqueez
 			'while','with',
 		);
 
+		$this->reserved = array_flip($this->reserved);
 		$this->data = array();
 		$this->counter = 0;
 		$this->varRx = '(?<![a-zA-Z0-9_\$])(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
@@ -87,7 +88,7 @@ class jsqueez
 
 		if ($cc_on = false !== strpos($f, '@cc_on'))
 		{
-			// Protects conditional comments from being removed
+			// Protect conditional comments from being removed
 			$f = str_replace('#', '##', $f);
 			$f = preg_replace("'/\*@cc_on(?![\$\.a-zA-Z0-9_])'", '1#@cc_on', $f);
 			$f = preg_replace( "'//@cc_on(?![\$\.a-zA-Z0-9_])([^\n]+)'", '2#@cc_on$1@#3', $f);
@@ -102,7 +103,7 @@ class jsqueez
 
 		$instr = false;
 
-		// Extracts strings, removes comments
+		// Extract strings, removes comments
 		$len = strlen($f);
 		for ($i = 0; $i < $len; ++$i)
 		{
@@ -110,7 +111,11 @@ class jsqueez
 			{
 				if ('//' == $instr)
 				{
-					if ("\n" == $f[$i]) $instr = false;
+					if ("\n" == $f[$i])
+					{
+						$f[$i--] = ' ';
+						$instr = false;
+					}
 				}
 				else if ($f[$i] == $instr)
 				{
@@ -145,7 +150,7 @@ class jsqueez
 			else switch ($f[$i])
 			{
 			case ';':
-				// Removes triple semi-colon (see http://dean.edwards.name/packer/2/usage/#triple-semi-colon)
+				// Remove triple semi-colon (see http://dean.edwards.name/packer/2/usage/#triple-semi-colon)
 				if ($i>0 && ';' == $f[$i-1] && $i+1 < $len && ';' == $f[$i+1]) $f[$i] = $f[$i+1] = '/';
 				else
 				{
@@ -190,11 +195,9 @@ class jsqueez
 				break;
 
 			case "\n":
-				break;
-
 			case "\t": $f[$i] = ' ';
 			case ' ':
-				if (' ' == $code[$j]) break;
+				if (!$j || ' ' == $code[$j]) break;
 
 			default:
 				$code[++$j] = $f[$i];
@@ -215,8 +218,8 @@ class jsqueez
 		$code = str_replace('+#+', '+ +', $code);
 
 		// Optimize new Array/Object to []/{}
-		false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?=(\(\)|[;\]\)\},:]))'", '[]', $code);
-		false !== strpos($code, 'new Object') && $code = preg_replace("'new Object(?=(\(\)|[;\]\)\},:]))'", '{}', $code);
+		false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?:\(\)|([;\]\)\},:]))'", '[]$1', $code);
+		false !== strpos($code, 'new Object') && $code = preg_replace("'new Object(?:\(\)|([;\]\)\},:]))'", '{}$1', $code);
 
 		// Add missing semi-colons after curly braces
 		$code = preg_replace("'\}(?![:,;\.\(\)\]\}]|(else|catch|finally|while)[^\$\.a-zA-Z0-9_])'", '};', $code);
@@ -233,7 +236,7 @@ class jsqueez
 		$f = array();
 		$j = -1;
 
-		// Removes as much semi-colon as possible
+		// Remove as much semi-colon as possible
 		$len = strlen($code);
 		for ($i = 0; $i < $len; ++$i)
 		{
@@ -303,7 +306,20 @@ class jsqueez
 			$f = str_replace(";\n", ';', $f);
 		}
 
+		// Fix some missing semi-colon
+		$rx = '(?<!(?<![a-zA-Z0-9_\$])' . implode(')(?<!(?<![a-zA-Z0-9_\$])', array_keys($this->reserved)) . ')';
+		$f = preg_replace("'{$rx} (?!(" . implode('|', array_keys($this->reserved)) . ") )'", "\n", $f);
+		$f = preg_replace("'\)([a-zA-Z0-9_\$])'", ")\n$1", $f);
+
+		// Replace multiple "var" declarations by a single one
+		$f = preg_replace_callback("'(?:\nvar [^\n]+){2,}'m", array(&$this, 'mergeVarDeclaration'), $f);
+
 		return array($f, $strings);
+	}
+
+	function mergeVarDeclaration($m)
+	{
+		return "\nvar " . str_replace("\nvar ", ',', substr($m[0], 5));
 	}
 
 	function extractClosures($code)
@@ -335,8 +351,6 @@ class jsqueez
 			$f[$i-2] .= substr($f[$i-1], 0, $bracket) . $fK . substr($f[$i], $j);
 			$i -= 2;
 		}
-
-		$this->reserved = array_flip($this->reserved);
 
 		return array($f[0], $closures);
 	}
