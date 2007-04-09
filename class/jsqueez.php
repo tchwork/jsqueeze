@@ -257,9 +257,16 @@ class jsqueez
 				break;
 
 			case ')':
+				if ($i+1 < $len && !isset($forPool[$s]) && !isset($instrPool[$s-1]) && preg_match("'[a-zA-Z0-9_\$]'", $code[$i+1]))
+				{
+					$f[$j] .= ')';
+					$f[++$j] = "\n";
+				}
+				else $f[++$j] = ')';
+
 				unset($forPool[$s]);
 				--$s;
-				$f[++$j] = ')';
+
 				continue 2;
 
 			case '}':
@@ -309,7 +316,6 @@ class jsqueez
 		// Fix some missing semi-colon
 		$rx = '(?<!(?<![a-zA-Z0-9_\$])' . implode(')(?<!(?<![a-zA-Z0-9_\$])', array_keys($this->reserved)) . ')';
 		$f = preg_replace("'{$rx} (?!(" . implode('|', array_keys($this->reserved)) . ") )'", "\n", $f);
-		$f = preg_replace("'\)([a-zA-Z0-9_\$])'", ")\n$1", $f);
 
 		// Replace multiple "var" declarations by a single one
 		$f = preg_replace_callback("'(?:\nvar [^\n]+){2,}'m", array(&$this, 'mergeVarDeclaration'), $f);
