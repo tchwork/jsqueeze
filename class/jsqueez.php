@@ -473,14 +473,14 @@ class jsqueez
 			case '.':
 				if (!isset($tree['local'][substr($var, 1)]))
 				{
-					$tree['local'][$var] = '#' . (preg_match("'^\.{$this->specialVarRx}$'", $var) ? $this->getNextName($tree['used']) : substr($var, 1));
+					$tree['local'][$var] = '#' . (preg_match("'^\.{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName() : substr($var, 1));
 				}
 				break;
 
 			case '#': break;
 
 			default:
-				$base = preg_match("'^{$this->specialVarRx}$'", $var) ? $this->getNextName($tree['used']) : $var;
+				$base = preg_match("'^{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName() : $var;
 				$tree['local'][$var] = $base;
 				if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $base;
 			}
@@ -533,7 +533,7 @@ class jsqueez
 			);
 	}
 
-	function getNextName(&$exclude, $recursive = false)
+	function getNextName(&$exclude = array(), $recursive = false)
 	{
 		++$this->counter;
 
