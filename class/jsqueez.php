@@ -20,17 +20,34 @@
 * White chars will be stripped
 *
 * Works with most valid Javascript code as long as semicolons are here.
-* If you use with/eval then be careful.
+* If you use eval() then be careful.
 */
 
 class jsqueez
 {
 	function jsqueez()
 	{
-		$this->known = array();
+		$this->known = array(
+			'abstract','boolean','break','byte',
+			'case','catch','char','class',
+			'const','continue','default','delete',
+			'do','double','else','export',
+			'extends','false','final','finally',
+			'float','for','function','goto',
+			'if','implements','in','instanceof',
+			'int','long','native','new',
+			'null','package','private','protected',
+			'public','return','short','static',
+			'super','switch','synchronized','this',
+			'throw','throws','transient','true',
+			'try','typeof','var','void',
+			'while','with',
+		);
+
 		$this->data = array();
 		$this->counter = 0;
-		$this->varRx = '(?<![a-zA-Z0-9_\$])(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
+		$this->varRx = '(?<![a-zA-Z0-9_\$])(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
+		$this->specialVarRx = '(?<![a-zA-Z0-9_\$])(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
 	}
 
 	function addJs($code) {$this->data[] =& $code;}
@@ -45,7 +62,7 @@ class jsqueez
 
 		list($code, $this->closures) = $this->extractClosures($code);
 
-		$key = "//''\"\"f0'";
+		$key = "//''\"\"#0'";
 		$this->closures[$key] =& $code;
 
 		$tree = array($key => array('parent' => false));
@@ -187,10 +204,9 @@ class jsqueez
 
 		$code = preg_replace("'\}(?![:,;\.\(\)\]\}]|(else|catch|finally|while)[^\$\.a-zA-Z0-9_])'", '};', $code);
 
-		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])if\('"                    , '1#(', $code);
-		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])for\('"                   , '2#(', $code);
-		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])while\('"                 , '3#(', $code);
-		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])else(?![\$\.a-zA-Z0-9_])'", '4#' , $code);
+		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])if\('"   , '1#(', $code);
+		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])for\('"  , '2#(', $code);
+		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])while\('", '3#(', $code);
 
 		$forPool = array();
 		$instrPool = array();
@@ -241,7 +257,6 @@ class jsqueez
 				case '1': $f[$j] = 'if';    break 2;
 				case '2': $f[$j] = 'for';   break 2;
 				case '3': $f[$j] = 'while'; break 2;
-				case '4': $f[$j] = 'else';  continue 2;
 				}
 
 			case '[';
@@ -253,7 +268,10 @@ class jsqueez
 			unset($instrPool[$s]);
 		}
 
-		return array(implode('', $f), $strings);
+		$f = implode('', $f);
+		$f = preg_replace("'(?<![\$\.a-zA-Z0-9_])else\n'", 'else;', $f);
+
+		return array($f, $strings);
 	}
 
 	function extractClosures($code)
@@ -271,8 +289,9 @@ class jsqueez
 			$c = 1;
 			$j = 0;
 			$l = strlen($f[$i]);
-			$fK = "//''\"\"f$i'";
-			$fS = $f[$i-1];
+			$fK = "//''\"\"#$i'";
+			$bracket = strpos($f[$i-1], '(', 9);
+			$fS = substr($f[$i-1], $bracket);
 
 			while ($c && $j<$l)
 			{
@@ -283,7 +302,7 @@ class jsqueez
 
 			$closures[$fK] = $fS;
 
-			$f[$i-2] .= $fK . substr($f[$i], $j);
+			$f[$i-2] .= substr($f[$i-1], 0, $bracket) . $fK . substr($f[$i], $j);
 			$i -= 2;
 		}
 
@@ -298,37 +317,34 @@ class jsqueez
 	{
 		$tree['code'] = $closure;
 
-		# Get all local vars (arguments and "var" prefixed)
+		# Get all local vars (functions, arguments and "var" prefixed)
 		$tree['local'] = $this->getVars($closure);
 
 		# Get all used vars, local and non-local
 		$tree['used'] = array();
-		$a = preg_replace("'^.function {$this->varRx}\('", '', $closure);
-		if (preg_match_all("#\.?{$this->varRx}#", $a, $w))
+		if (preg_match_all("#\.?{$this->varRx}#", $closure, $w))
 		{
 			foreach ($w[0] as $k) @++$tree['used'][$k];
 		}
 
-		if (preg_match_all("#//''\"\"f\d+'#", $closure, $w))
+		if (preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
 		{
-			foreach ($w[0] as $a)
+			$a = $this->strings[$a];
+
+			if (preg_match_all("#\.?{$this->varRx}#", $a, $w))
 			{
-				if (preg_match("'^.function ({$this->varRx})\('", $this->closures[$a], $w))
+				foreach ($w[0] as $k)
 				{
-					$tree['local'][$w[1]] = 0;
-					@++$tree['used'][$w[1]];
+					$w =& $tree;
+
+					while (!isset($w['used'][$k]) && isset($w['parent'])) $w =& $w['parent'];
+
+					isset($w['used'][$k]) && @++$tree['used'][$k];
 				}
+
+				unset($w);
 			}
 		}
-
-		foreach ($this->strings as $a)
-		{
-			if (("'" == $a[0] || '"' == $a[0]) && preg_match_all("#\.?{$this->varRx}#", $a, $w))
-			{
-				foreach ($w[0] as $k) isset($tree['used'][$k]) && ++$tree['used'][$k];
-			}
-		}
-
 
 		# Propagate the usage number to parents
 		foreach ($tree['used'] as $w => $a)
@@ -363,7 +379,7 @@ class jsqueez
 
 		# Analyse childs
 		$tree['childs'] = array();
-		if (preg_match_all("#//''\"\"f\d+'#", $closure, $w))
+		if (preg_match_all("@//''\"\"#[0-9]+'@", $closure, $w))
 		{
 			foreach ($w[0] as $a)
 			{
@@ -396,14 +412,14 @@ class jsqueez
 			case '.':
 				if (!isset($tree['local'][substr($var, 1)]))
 				{
-					$tree['local'][$var] = '#' . $this->_getNextName(array_flip($tree['used']));
+					$tree['local'][$var] = '#' . $this->_getNextName($tree['used']);
 				}
 				break;
 
 			case '#': break;
 
 			default:
-				$base = $this->_getNextName(array_flip($tree['used']));
+				$base = $this->_getNextName($tree['used']);
 				$tree['local'][$var] = $base;
 				if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $base;
 			}
@@ -416,7 +432,7 @@ class jsqueez
 
 			foreach (array_keys($tree['local']) as $var)
 			{
-				$tree['local'][$var] = $this->_getNextName(array_flip($tree['used']));
+				$tree['local'][$var] = $this->_getNextName($tree['used']);
 			}
 		}
 
@@ -426,7 +442,7 @@ class jsqueez
 			$tree['code'] = str_replace($var, $tree['childs'][$var]['code'], $tree['code']);
 		}
 
-		$tree['code'] = preg_replace("#\.?{$this->varRx}#e", "isset(\$tree['local']['$0']) ? \$tree['local']['$0'] : '$0'", $tree['code']);
+		$tree['code'] = preg_replace("#\.?{$this->specialVarRx}#e", "isset(\$tree['local']['$0']) ? \$tree['local']['$0'] : '$0'", $tree['code']);
 
 
 		$this->local_tree =& $tree['local'];
@@ -439,7 +455,7 @@ class jsqueez
 		$a = $a[0];
 		$tree =& $this->local_tree;
 
-		$this->strings[$a] = preg_replace("#\.?{$this->varRx}#e", "isset(\$tree['$0']) ? \$tree['$0'] : '$0'", $this->strings[$a]);
+		$this->strings[$a] = preg_replace("#\.?{$this->specialVarRx}#e", "isset(\$tree['$0']) ? \$tree['$0'] : '$0'", $this->strings[$a]);
 
 		return '';
 	}
@@ -451,7 +467,7 @@ class jsqueez
 		if (preg_match("'\((.*?)\)'i", $closure, $v))
 		{
 			$v = explode(',', $v[1]);
-			foreach ($v as $w) if (preg_match("'^{$this->varRx}$'", $w)) $vars[$w] = 0;
+			foreach ($v as $w) if (preg_match("'^{$this->specialVarRx}$'", $w)) $vars[$w] = 0;
 		}
 
 		if (preg_match_all("'[^\$\.a-zA-Z0-9_]var ([^;]+)'i", $closure, $v))
@@ -462,21 +478,33 @@ class jsqueez
 			$v = preg_replace("'\{.*?\}'", '', $v);
 			$v = preg_replace("'\[.*?\]'", '', $v);
 			$v = explode(',', $v);
-			foreach ($v as $w) if (preg_match("'^{$this->varRx}'", $w, $v)) $vars[$v[0]] = 0;
+			foreach ($v as $w) if (preg_match("'^{$this->specialVarRx}'", $w, $v)) $vars[$v[0]] = 0;
+		}
+
+
+		if (preg_match_all("'[^\$\.a-zA-Z0-9_]function ({$this->specialVarRx})\('", $closure, $v))
+		{
+			foreach ($v as $w) $vars[$w] = 0;
 		}
 
 		return $vars;
 	}
 
-	function _getNextName($exclude = array())
+	function _getNextName($exclude = array(), $recursive = false)
 	{
-		if ($exclude===true) return $this->counter = -1;
+		if (true === $exclude) return $this->counter = -1;
 		else ++$this->counter;
 
-		$str0 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+		if (!$recursive)
+		{
+			$exclude += array_keys($exclude);
+			$exclude  = array_flip($exclude);
+		}
+
+		$str0 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
 		$len0 = strlen($str0);
 
-		$str1 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+		$str1 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 		$len1 = strlen($str1);
 
 		$name = $str0[$this->counter % $len0];
@@ -488,7 +516,7 @@ class jsqueez
 			$i = intval($i / $len1) - 1;
 		}
 
-		return !(isset($this->known[$name]) || isset($exclude[$name])) ? $name : $this->_getNextName($exclude);
+		return !(isset($this->known[$name]) || isset($exclude[$name])) ? $name : $this->_getNextName($exclude, true);
 	}
 
 	function _restoreCc(&$s)
