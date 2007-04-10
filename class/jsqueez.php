@@ -187,11 +187,16 @@ class jsqueez
 
 			case "'":
 			case '"':
-				$key = "//''\"\"" . $K++ . $instr = $f[$i];
-				$code[++$j] = $key;
-				isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
-				$strings[$key] = array($instr);
-				$s =& $strings[$key];
+				if ($f[$i+1] == $f[$i]) $code[++$j] = $f[$i] . $f[++$i];
+				else
+				{
+					$key = "//''\"\"" . $K++ . $instr = $f[$i];
+					$code[++$j] = $key;
+					isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
+					$strings[$key] = array($instr);
+					$s =& $strings[$key];
+				}
+
 				break;
 
 			case "\n":
@@ -217,7 +222,7 @@ class jsqueez
 		$code = str_replace('-#-', '- -', $code);
 		$code = str_replace('+#+', '+ +', $code);
 
-		// Optimize new Array/Object to []/{}
+		// Replace new Array/Object by []/{}
 		false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?:\(\)|([;\]\)\},:]))'", '[]$1', $code);
 		false !== strpos($code, 'new Object') && $code = preg_replace("'new Object(?:\(\)|([;\]\)\},:]))'", '{}$1', $code);
 
@@ -318,12 +323,12 @@ class jsqueez
 		$f = preg_replace("'{$rx} (?!(" . implode('|', array_keys($this->reserved)) . ") )'", "\n", $f);
 
 		// Replace multiple "var" declarations by a single one
-		$f = preg_replace_callback("'(?:\nvar [^\n]+){2,}'m", array(&$this, 'mergeVarDeclaration'), $f);
+		$f = preg_replace_callback("'(?:\nvar [^\n]+){2,}'", array(&$this, 'mergeVarDeclarations'), $f);
 
 		return array($f, $strings);
 	}
 
-	function mergeVarDeclaration($m)
+	function mergeVarDeclarations($m)
 	{
 		return "\nvar " . str_replace("\nvar ", ',', substr($m[0], 5));
 	}
@@ -332,8 +337,8 @@ class jsqueez
 	{
 		$code = ';' . $code;
 
-		$f = preg_split("'([^\$\.a-zA-Z0-9_]function[ \(].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
-		$i = count($f)-1;
+		$f = preg_split("'(?<![\$\.a-zA-Z0-9_])(function[ \(].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
+		$i = count($f) - 1;
 		$closures = array();
 
 		while ($i)
@@ -341,20 +346,17 @@ class jsqueez
 			$c = 1;
 			$j = 0;
 			$l = strlen($f[$i]);
-			$fK = "//''\"\"#$i'";
-			$bracket = strpos($f[$i-1], '(', 9);
-			$fS = substr($f[$i-1], $bracket);
 
 			while ($c && $j<$l)
 			{
-				$fS .= $s = $f[$i][$j];
+				$s = $f[$i][$j++];
 				$c += '{' == $s ? 1 : ('}' == $s ? -1 : 0);
-				++$j;
 			}
 
-			$closures[$fK] = $fS;
-
-			$f[$i-2] .= substr($f[$i-1], 0, $bracket) . $fK . substr($f[$i], $j);
+			$key = "//''\"\"#$i'";
+			$bracket = strpos($f[$i-1], '(', 8);
+			$closures[$key] = substr($f[$i-1], $bracket) . substr($f[$i], 0, $j);
+			$f[$i-2] .= substr($f[$i-1], 0, $bracket) . $key . substr($f[$i], $j);
 			$i -= 2;
 		}
 
@@ -363,27 +365,57 @@ class jsqueez
 
 	function makeVars($closure, &$tree)
 	{
-		$tree['code'] = $closure;
+		$tree['code'] =& $closure;
 
 
 		// Get all local vars (functions, arguments and "var" prefixed)
 
-		$vars = array();
+		$tree['local'] = array();
+		$vars =& $tree['local'];
 
-		if (preg_match("'\((.*?)\)'i", $closure, $v))
+		if (preg_match("'\((.*?)\)'", $closure, $v))
 		{
 			$v = explode(',', $v[1]);
-			foreach ($v as $w) if (preg_match("'^{$this->varRx}$'", $w)) $vars[$w] = 0;
+			foreach ($v as $w) $vars[$w] = 0;
 		}
 
-		if (preg_match_all("'[^\$\.a-zA-Z0-9_]var ([^;\n]+)'i", $closure, $v))
+		$v = preg_split("'(?<![\$\.a-zA-Z0-9_])var '", $closure);
+		if ($i = count($v) - 1)
 		{
-			$v = implode(',', $v[1]);
+			$w = array();
 
-			$v = preg_replace("'\(.*?\)'", '', $v);
-			$v = preg_replace("'\{.*?\}'", '', $v);
-			$v = preg_replace("'\[.*?\]'", '', $v);
-			$v = explode(',', $v);
+			while ($i)
+			{
+				$j = $c = 0;
+				$l = strlen($v[$i]);
+
+				while ($j < $l)
+				{
+					switch ($v[$i][$j])
+					{
+					case '(': case '[': case '{':
+						++$c;
+						break;
+
+					case ')': case ']': case '}':
+						if (!$c--) break 2;
+						break;
+
+					case ';': case "\n":
+						if (!$c) break 2;
+
+					default:
+						$c || $w[] = $v[$i][$j];
+					}
+
+					++$j;
+				}
+
+				$w[] = ',';
+				--$i;
+			}
+
+			$v = explode(',', implode('', $w));
 			foreach ($v as $w) if (preg_match("'^{$this->varRx}'", $w, $v)) $vars[$v[0]] = 0;
 		}
 
@@ -392,15 +424,15 @@ class jsqueez
 			foreach ($v[1] as $w) $vars[$w] = 0;
 		}
 
-		$tree['local'] = $vars;
-
 
 		// Get all used vars, local and non-local
 
 		$tree['used'] = array();
+		$vars =& $tree['used'];
+
 		if (preg_match_all("#\.?{$this->varRx}#", $closure, $w))
 		{
-			foreach ($w[0] as $k) @++$tree['used'][$k];
+			foreach ($w[0] as $k) if (!isset($this->reserved[$k])) isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1;
 		}
 
 		if (preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
@@ -413,7 +445,7 @@ class jsqueez
 
 					while (isset($w['parent']) && !(isset($w['used'][$k]) || isset($w['local'][$k]))) $w =& $w['parent'];
 
-					(isset($w['used'][$k]) || isset($w['local'][$k])) && @++$tree['used'][$k];
+					(isset($w['used'][$k]) || isset($w['local'][$k])) && (isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1);
 				}
 
 				unset($w);
@@ -423,18 +455,19 @@ class jsqueez
 
 		// Propagate the usage number to parents
 
-		foreach ($tree['used'] as $w => $a)
+		foreach ($vars as $w => $a)
 		{
 			$k =& $tree;
 			$chain = array();
 			do
 			{
+				$vars =& $k['local'];
 				$chain[] =& $k;
-				if (isset($k['local'][$w]))
+				if (isset($vars[$w]))
 				{
 					unset($k['used'][$w]);
-					if (isset($k['local'][$w])) $k['local'][$w] += $a;
-					else $k['local'][$w] = $a;
+					if (isset($vars[$w])) $vars[$w] += $a;
+					else $vars[$w] = $a;
 					$a = false;
 					break;
 				}
@@ -443,13 +476,13 @@ class jsqueez
 
 			if ($a && !$k['parent'])
 			{
-				if (isset($k['local'][$w])) $k['local'][$w] += $a;
-				else $k['local'][$w] = $a;
+				if (isset($vars[$w])) $vars[$w] += $a;
+				else $vars[$w] = $a;
 			}
 
-			if (isset($tree['used'][$w]) && isset($k['local'][$w])) foreach ($chain as $a => $b)
+			if (isset($tree['used'][$w]) && isset($vars[$w])) foreach ($chain as &$b)
 			{
-				if (!isset($chain[$a]['local'][$w])) $chain[$a]['used'][$w] =& $k['local'][$w];
+				isset($b['local'][$w]) || $b['used'][$w] =& $vars[$w];
 			}
 		}
 
@@ -457,12 +490,14 @@ class jsqueez
 		// Analyse childs
 
 		$tree['childs'] = array();
+		$vars =& $tree['childs'];
+
 		if (preg_match_all("@//''\"\"#[0-9]+'@", $closure, $w))
 		{
 			foreach ($w[0] as $a)
 			{
-				$tree['childs'][$a] = array('parent' => &$tree);
-				$this->makeVars($this->closures[$a], $tree['childs'][$a]);
+				$vars[$a] = array('parent' => &$tree);
+				$this->makeVars($this->closures[$a], $vars[$a]);
 			}
 		}
 	}
@@ -521,35 +556,42 @@ class jsqueez
 		$this->used_tree  =& $tree['used'];
 
 		$tree['code'] = preg_replace_callback("#\.?{$this->varRx}#", array(&$this, 'getNewName'), $tree['code']);
+		$tree['code'] = preg_replace_callback("#//''\"\"[0-9]+['\"]#", array(&$this, 'renameInString'), $tree['code']);
 
-		preg_replace_callback("#//''\"\"[0-9]+['\"]#", array(&$this, 'renameInString'), $tree['code']);
-
-		foreach (array_keys($tree['childs']) as $var)
+		foreach ($tree['childs'] as $a => &$b)
 		{
-			$this->renameVars($tree['childs'][$var], false);
-			$tree['code'] = str_replace($var, $tree['childs'][$var]['code'], $tree['code']);
+			$this->renameVars($b, false);
+			$tree['code'] = str_replace($a, $b['code'], $tree['code']);
+			unset($tree['childs'][$a]);
 		}
 	}
 
 	function renameInString($a)
 	{
-		$a = $a[0];
+		$b =& $this->strings[$a[0]];
+		unset($this->strings[$a[0]]);
 
-		$this->strings[$a] = preg_replace_callback("#\.?{$this->specialVarRx}#", array(&$this, 'getNewName'), $this->strings[$a]);
-
-		return '';
+		return preg_replace_callback(
+			"#\.?{$this->specialVarRx}#",
+			array(&$this, 'getNewName'),
+			$b
+		);
 	}
 
 	function getNewName($m)
 	{
 		$m = $m[0];
 
-		return isset($this->local_tree[$m])
-			? $this->local_tree[$m]
+		return isset($this->reserved[$m])
+			? $m
 			: (
-				  isset($this->used_tree[$m])
-				? $this->used_tree[$m]
-				: $m
+				  isset($this->local_tree[$m])
+				? $this->local_tree[$m]
+				: (
+					  isset($this->used_tree[$m])
+					? $this->used_tree[$m]
+					: $m
+				)
 			);
 	}
 
