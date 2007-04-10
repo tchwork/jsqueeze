@@ -46,7 +46,7 @@ class jsqueez
 			'super','switch','synchronized','this',
 			'throw','throws','transient','true',
 			'try','typeof','var','void',
-			'while','with','yield','let'
+			'while','with','yield','let',
 		);
 
 		$this->reserved = array_flip($this->reserved);
@@ -318,9 +318,25 @@ class jsqueez
 			$f = str_replace(";\n", ';', $f);
 		}
 
+		$r1 = array( // reserved keywords with an object
+			'abstract','boolean','byte','char','class','const','default','delete',
+			'do','double','else','export','extends','final','float','function',
+			'goto','implements','in','instanceof','int','long','native','new',
+			'package','private','protected','public','return','short','static',
+			'super','synchronized','throw','throws','transient','typeof','var',
+			'void','yield','let',
+		);
+
+		$r2 = array( // reserved words with a subject
+			'abstract','boolean','byte','char','class','const','default','double',
+			'export','extends','final','float','for','goto','if','implements',
+			'in','instanceof','int','long','native','package','private','protected',
+			'public','short','static','super','synchronized','throws','transient',
+		);
+
 		// Fix some missing semi-colon
-		$rx = '(?<!(?<![a-zA-Z0-9_\$])' . str_replace('|', ')(?<!(?<![a-zA-Z0-9_\$])', 'abstract|boolean|byte|char|class|const|default|delete|do|double|else|export|extends|final|float|for|goto|implements|in|instanceof|int|long|native|new|package|private|protected|public|return|short|static|super|synchronized|throw|throws|transient|typeof|var|void|yield|let') . ')';
-		$f = preg_replace("'{$rx} (?!(boolean|byte|char|class|double|extends|final|float|if|implements|in|instanceof|int|long|private|protected|public|short|static|throws) )'", "\n", $f);
+		$r1 = '(?<!(?<![a-zA-Z0-9_\$])' . implode(')(?<!(?<![a-zA-Z0-9_\$])', $r1) . ')';
+		$f = preg_replace("'{$r1} (?!(" . implode('|', $r2) . ") )'", "\n", $f);
 
 		// Replace multiple "var" declarations by a single one
 		$f = preg_replace_callback("'(?:\nvar [^\n]+){2,}'", array(&$this, 'mergeVarDeclarations'), $f);
