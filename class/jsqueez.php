@@ -26,7 +26,7 @@
 * frequency and single characters frequency in the source.
 *
 * Works with most valid Javascript code.
-* Tolerates some missing semi-colons.
+* Tolerates missing semi-colons.
 * Respects Microsoft's conditional comments.
 * Three semi-colons ;;; are treated like single-line comments.
 */
@@ -36,18 +36,19 @@ class jsqueez
 	function jsqueez()
 	{
 		$this->reserved = array(
-			'abstract','boolean','break','byte','case','catch','char','class',
-			'const','continue','default','delete','do','double','else','export',
-			'extends','false','final','finally','float','for','function','goto',
-			'if','implements','in','instanceof','int','long','native','new','null',
-			'package','private','protected','public','return','short','static',
-			'super','switch','synchronized','this','throw','throws','transient',
-			'true','try','typeof','var','void','while','with','yield','let',
+			'abstract','as','boolean','break','byte','case','catch','char','class',
+			'const','continue','debugger','default','delete','do','double','else',
+			'enum','export','extends','false','final','finally','float','for',
+			'function','goto','if','implements','import','in','instanceof','int',
+			'long','native','new','null','package','private','protected','public',
+			'return','short','static','super','switch','synchronized','this',
+			'throw','throws','transient','true','try','typeof','var','void',
+			'while','with','yield','let',
 		);
 
 		$this->reserved = array_flip($this->reserved);
 		$this->data = array();
-		$this->chrFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
+		$this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
 		$this->counter = 0;
 		$this->varRx = '(?<![a-zA-Z0-9_\$])(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
 		$this->specialVarRx = '(?<![a-zA-Z0-9_\$])(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
@@ -258,16 +259,20 @@ class jsqueez
 				$f[++$j] = '(';
 				break;
 
+			case ']':
 			case ')':
 				if ($i+1 < $len && !isset($forPool[$s]) && !isset($instrPool[$s-1]) && preg_match("'[a-zA-Z0-9_\$]'", $code[$i+1]))
 				{
-					$f[$j] .= ')';
+					$f[$j] .= $code[$i];
 					$f[++$j] = "\n";
 				}
-				else $f[++$j] = ')';
+				else $f[++$j] = $code[$i];
 
-				unset($forPool[$s]);
-				--$s;
+				if (')' == $code[$i])
+				{
+					unset($forPool[$s]);
+					--$s;
+				}
 
 				continue 2;
 
@@ -315,25 +320,20 @@ class jsqueez
 			$f = str_replace(";\n", ';', $f);
 		}
 
-		$r1 = array( // reserved keywords with a direct object
-			'abstract','boolean','byte','char','class','const','default','delete',
-			'do','double','else','export','extends','final','float','function',
-			'goto','implements','in','instanceof','int','long','native','new',
-			'package','private','protected','public','return','short','static',
-			'super','synchronized','throw','throws','transient','typeof','var',
-			'void','yield','let',
+		$r1 = array( // keywords with a direct object
+			'delete','do','else','function','in','instanceof','new',
+			'return','throw','typeof','var','void','yield','let',
 		);
 
-		$r2 = array( // reserved words with a subject
-			'abstract','boolean','byte','char','class','const','default','double',
-			'export','extends','final','float','for','goto','if','implements',
-			'in','instanceof','int','long','native','package','private','protected',
-			'public','short','static','super','synchronized','throws','transient',
+		$r2 = array( // keywords with a subject
+			'in','instanceof',
 		);
 
-		// Fix some missing semi-colon
-		$r1 = '(?<!(?<![a-zA-Z0-9_\$])' . implode(')(?<!(?<![a-zA-Z0-9_\$])', $r1) . ')';
-		$f = preg_replace("'{$r1} (?!(" . implode('|', $r2) . ") )'", "\n", $f);
+		// Fix missing semi-colons
+		$f = preg_replace("'(?<!(?<![a-zA-Z0-9_\$])" . implode(')(?<!(?<![a-zA-Z0-9_\$])', $r1) . ") (?!(" . implode('|', $r2) . ")(?![a-zA-Z0-9_\$]))'", "\n", $f);
+		$f = preg_replace("'(?<!(?<![a-zA-Z0-9_\$])do)(?<!(?<![a-zA-Z0-9_\$])else) if\('", "\nif(", $f);
+		$f = preg_replace("'(?<=--|\+\+)(?<![a-zA-Z0-9_\$])(" . implode('|', $r1) . ")(?![a-zA-Z0-9_\$])'", "\n$1", $f);
+		$f = preg_replace("'(?<![a-zA-Z0-9_\$])for\neach\('", 'for each(', $f);
 
 		return array($f, $strings);
 	}
@@ -463,7 +463,7 @@ class jsqueez
 					unset($w);
 				}
 
-				if (0 == $i%2 || !isset($vars[$k])) foreach (count_chars($v[$i], 1) as $k => $w) $this->chrFreq[$k] += $w;
+				if (0 == $i%2 || !isset($vars[$k])) foreach (count_chars($v[$i], 1) as $k => $w) $this->charFreq[$k] += $w;
 			}
 		}
 
@@ -535,16 +535,16 @@ class jsqueez
 			{
 				if (!preg_match("#\.?{$this->specialVarRx}#", $k))
 				{
-					foreach (count_chars($k, 1) as $k => $w) $this->chrFreq[$k] += $w * $v;
+					foreach (count_chars($k, 1) as $k => $w) $this->charFreq[$k] += $w * $v;
 				}
 			}
 
-			arsort($this->chrFreq);
+			arsort($this->charFreq);
 
 			$this->str0 = '';
 			$this->str1 = '';
 
-			foreach ($this->chrFreq as $k => $v)
+			foreach ($this->charFreq as $k => $v)
 			{
 				if (!$v) break;
 
@@ -560,27 +560,6 @@ class jsqueez
 					$this->str1 .= $v;
 				}
 			}
-
-/*
-			$v = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-			for ($k = 0; $k < 52; ++$k)
-			{
-				if (false === strpos($this->str0, $v[$k]))
-				{
-					$this->str0 .= $v[$k];
-					$this->str1 .= $v[$k];
-				}
-			}
-
-			$v = '0123456789';
-			for ($k = 0; $k < 10; ++$k)
-			{
-				if (false === strpos($this->str1, $v[$k]))
-				{
-					$this->str1 .= $v[$k];
-				}
-			}
-*/
 
 			foreach (array_keys($tree['local']) as $var)
 			{
