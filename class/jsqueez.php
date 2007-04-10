@@ -16,16 +16,19 @@
 * This class obfuscates javascript code
 *
 * Removes comments and white chars,
-* Shorten every local vars, and global vars/methods/properties
-* who begins with one or more "$" or a single "_".
-* Shorten also local/global vars found in strings,
+* Shortens every local vars, and global vars/methods/properties
+* when they begin with one or more "$" or a single "_".
+* Shortens also local/global vars found in strings,
 * but only if they are prefixed as above.
-* If you use eval() then be careful.
+* If you use with/eval then be careful.
+*
+* The shortened name is choosen by considering closures, variables
+* frequency and single characters frequency in the source.
 *
 * Works with most valid Javascript code.
 * Tolerates some missing semi-colons.
 * Respects Microsoft's conditional comments.
-* Three semi-colons (;;;) are treated like single-line comments.
+* Three semi-colons ;;; are treated like single-line comments.
 */
 
 class jsqueez
