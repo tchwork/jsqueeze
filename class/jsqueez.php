@@ -441,7 +441,7 @@ class jsqueez
 
 		if (preg_match_all("#\.?{$this->varRx}#", $closure, $w))
 		{
-			foreach ($w[0] as $k) if (!isset($this->reserved[$k])) isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1;
+			foreach ($w[0] as $k) isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1;
 		}
 
 		if (preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
