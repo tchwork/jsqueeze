@@ -450,10 +450,11 @@ class jsqueez
 			$a = count($v);
 			for ($i = 0; $i < $a; ++$i)
 			{
+				$k = $v[$i];
+
 				if ($i%2)
 				{
 					$w =& $tree;
-					$k = $v[$i];
 
 					while (isset($w['parent']) && !(isset($w['used'][$k]) || isset($w['local'][$k]))) $w =& $w['parent'];
 
@@ -461,7 +462,8 @@ class jsqueez
 
 					unset($w);
 				}
-				else foreach (count_chars($v[$i], 1) as $k => $w) $this->chrFreq[$k] += $w;
+
+				if (0 == $i%2 || !isset($vars[$k])) foreach (count_chars($v[$i], 1) as $k => $w) $this->chrFreq[$k] += $w;
 			}
 		}
 
