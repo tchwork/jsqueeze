@@ -33,24 +33,18 @@ class jsqueez
 	function jsqueez()
 	{
 		$this->reserved = array(
-			'abstract','boolean','break','byte',
-			'case','catch','char','class',
-			'const','continue','default','delete',
-			'do','double','else','export',
-			'extends','false','final','finally',
-			'float','for','function','goto',
-			'if','implements','in','instanceof',
-			'int','long','native','new',
-			'null','package','private','protected',
-			'public','return','short','static',
-			'super','switch','synchronized','this',
-			'throw','throws','transient','true',
-			'try','typeof','var','void',
-			'while','with','yield','let',
+			'abstract','boolean','break','byte','case','catch','char','class',
+			'const','continue','default','delete','do','double','else','export',
+			'extends','false','final','finally','float','for','function','goto',
+			'if','implements','in','instanceof','int','long','native','new','null',
+			'package','private','protected','public','return','short','static',
+			'super','switch','synchronized','this','throw','throws','transient',
+			'true','try','typeof','var','void','while','with','yield','let',
 		);
 
 		$this->reserved = array_flip($this->reserved);
 		$this->data = array();
+		$this->chrFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
 		$this->counter = 0;
 		$this->varRx = '(?<![a-zA-Z0-9_\$])(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
 		$this->specialVarRx = '(?<![a-zA-Z0-9_\$])(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
@@ -318,7 +312,7 @@ class jsqueez
 			$f = str_replace(";\n", ';', $f);
 		}
 
-		$r1 = array( // reserved keywords with an object
+		$r1 = array( // reserved keywords with a direct object
 			'abstract','boolean','byte','char','class','const','default','delete',
 			'do','double','else','export','extends','final','float','function',
 			'goto','implements','in','instanceof','int','long','native','new',
@@ -449,18 +443,22 @@ class jsqueez
 
 		if (preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
 		{
-			if (preg_match_all("#\.?{$this->specialVarRx}#", $this->strings[$a], $w))
+			$v = preg_split("#(\.?{$this->specialVarRx})#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
+			$a = count($v);
+			for ($i = 0; $i < $a; ++$i)
 			{
-				foreach ($w[0] as $k)
+				if ($i%2)
 				{
 					$w =& $tree;
+					$k = $v[$i];
 
 					while (isset($w['parent']) && !(isset($w['used'][$k]) || isset($w['local'][$k]))) $w =& $w['parent'];
 
 					(isset($w['used'][$k]) || isset($w['local'][$k])) && (isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1);
-				}
 
-				unset($w);
+					unset($w);
+				}
+				else foreach (count_chars($v[$i], 1) as $k => $w) $this->chrFreq[$k] += $w;
 			}
 		}
 
@@ -527,6 +525,57 @@ class jsqueez
 		{
 			$tree['local'] += $tree['used'];
 			$tree['used'] = array();
+
+			foreach ($tree['local'] as $k => $v)
+			{
+				if (!preg_match("#\.?{$this->specialVarRx}#", $k))
+				{
+					foreach (count_chars($k, 1) as $k => $w) $this->chrFreq[$k] += $w * $v;
+				}
+			}
+
+			arsort($this->chrFreq);
+
+			$this->str0 = '';
+			$this->str1 = '';
+
+			foreach ($this->chrFreq as $k => $v)
+			{
+				if (!$v) break;
+
+				$v = chr($k);
+
+				if ((64 < $k && $k < 91) || (96 < $k && $k < 123))
+				{
+					$this->str0 .= $v;
+					$this->str1 .= $v;
+				}
+				else if (47 < $k && $k < 58)
+				{
+					$this->str1 .= $v;
+				}
+			}
+
+/*
+			$v = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+			for ($k = 0; $k < 52; ++$k)
+			{
+				if (false === strpos($this->str0, $v[$k]))
+				{
+					$this->str0 .= $v[$k];
+					$this->str1 .= $v[$k];
+				}
+			}
+
+			$v = '0123456789';
+			for ($k = 0; $k < 10; ++$k)
+			{
+				if (false === strpos($this->str1, $v[$k]))
+				{
+					$this->str1 .= $v[$k];
+				}
+			}
+*/
 
 			foreach (array_keys($tree['local']) as $var)
 			{
@@ -623,18 +672,15 @@ class jsqueez
 			$exclude = array_flip($exclude);
 		}
 
-		$str0 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-		$len0 = strlen($str0);
+		$len0 = strlen($this->str0);
+		$len1 = strlen($this->str0);
 
-		$str1 = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-		$len1 = strlen($str1);
-
-		$name = $str0[$this->counter % $len0];
+		$name = $this->str0[$this->counter % $len0];
 
 		$i = intval($this->counter / $len0) - 1;
 		while ($i>=0)
 		{
-			$name .= $str1[ $i % $len1 ];
+			$name .= $this->str1[ $i % $len1 ];
 			$i = intval($i / $len1) - 1;
 		}
 
