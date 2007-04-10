@@ -338,15 +338,7 @@ class jsqueez
 		$r1 = '(?<!(?<![a-zA-Z0-9_\$])' . implode(')(?<!(?<![a-zA-Z0-9_\$])', $r1) . ')';
 		$f = preg_replace("'{$r1} (?!(" . implode('|', $r2) . ") )'", "\n", $f);
 
-		// Replace multiple "var" declarations by a single one
-		$f = preg_replace_callback("'(?:\nvar [^\n]+){2,}'", array(&$this, 'mergeVarDeclarations'), $f);
-
 		return array($f, $strings);
-	}
-
-	function mergeVarDeclarations($m)
-	{
-		return "\nvar " . str_replace("\nvar ", ',', substr($m[0], 5));
 	}
 
 	function extractClosures($code)
@@ -382,6 +374,10 @@ class jsqueez
 	function makeVars($closure, &$tree)
 	{
 		$tree['code'] =& $closure;
+
+
+		// Replace multiple "var" declarations by a single one
+		$closure = preg_replace_callback("'(?:[\n\}]var [^\n]+){2,}'", array(&$this, 'mergeVarDeclarations'), $closure);
 
 
 		// Get all local vars (functions, arguments and "var" prefixed)
@@ -516,6 +512,11 @@ class jsqueez
 				$this->makeVars($this->closures[$a], $vars[$a]);
 			}
 		}
+	}
+
+	function mergeVarDeclarations($m)
+	{
+		return substr($m[0], 0, 5) . str_replace("\nvar ", ',', substr($m[0], 5));
 	}
 
 	function renameVars(&$tree, $base = true)
