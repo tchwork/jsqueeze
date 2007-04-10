@@ -516,7 +516,7 @@ class jsqueez
 
 	function mergeVarDeclarations($m)
 	{
-		return 'var ' . str_replace("\nvar ", ',', substr($m[0], 5));
+		return str_replace("\nvar ", ',', $m[0]);
 	}
 
 	function renameVars(&$tree, $base = true)
