@@ -377,7 +377,7 @@ class jsqueez
 
 
 		// Replace multiple "var" declarations by a single one
-		$closure = preg_replace_callback("'(?:[\n\}]var [^\n]+){2,}'", array(&$this, 'mergeVarDeclarations'), $closure);
+		$closure = preg_replace_callback("'(?<=[\n\}])var [^\n]+(?:\nvar [^\n]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
 
 
 		// Get all local vars (functions, arguments and "var" prefixed)
@@ -516,7 +516,7 @@ class jsqueez
 
 	function mergeVarDeclarations($m)
 	{
-		return substr($m[0], 0, 5) . str_replace("\nvar ", ',', substr($m[0], 5));
+		return 'var ' . str_replace("\nvar ", ',', substr($m[0], 5));
 	}
 
 	function renameVars(&$tree, $base = true)
