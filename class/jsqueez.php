@@ -13,66 +13,77 @@
 
 
 /*
-* This class shrinks javascript code
 *
-* Works with most valid Javascript code.
-* Tolerates missing semi-colons.
-* Respects Microsoft's conditional comments.
-* Three semi-colons ;;; are treated like single-line comments
-* (http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
+* This class shrinks Javascript code
 *
-* Removes comments, white chars and semi-colons.
-* Shortens every local vars, and global vars/methods/properties
-* when they begin with one or more "$" or with a single "_".
-* Shortens also local/global vars found in strings,
-* but only if they are prefixed as above.
-* If you use with/eval then be careful.
+* Should work with most valid Javascript code,
+* even when semi-colons are missing.
 *
-* The shortened name is choosen by considering closures, variables
-* frequency and single characters frequency in the source.
+* Features:
+* - Removes comments and white spaces.
+* - Shortens every local vars, and specifically global vars, methods and
+*   properties who begin with one or more "$" or with a single "_".
+* - Shortens also local/global vars found in strings,
+*   but only if they are prefixed as above.
+* - Respects Microsoft's conditional comments.
 *
-* Does some local optimizations:
-* - replaces new Array/Object by []/{}
-* - multiple consecutive "var" declarations are merged with commas
-* - fix a bug in Safari's parser (http://forums.asp.net/thread/1585609.aspx)
+* Notes:
+* - Shortened names are choosen by considering closures,
+*   variables frequency and single characters frequency.
+* - If you use with/eval then be careful.
+*
+* Bonus:
+* - Replaces new Array/Object by []/{}
+* - Merges multiple consecutive "var" declarations with commas
+* - Fix a bug in Safari's parser (http://forums.asp.net/thread/1585609.aspx)
+* - Can replace optional semi-colons by line feeds,
+*   thus facilitating output debugging.
+* - Treats three semi-colons ;;; like single-line comments
+*   (http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
+*
 */
 
 class jsqueez
 {
-	var $varRx = '(?<![a-zA-Z0-9_\$])(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
-	var $specialVarRx = '(?<![a-zA-Z0-9_\$])(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
+	/**
+	 * Class constructor
+	 *
+	 * $specialVarRx defines the regular expression of special variables names
+	 * for global vars, methods, properties and in string substitution.
+	 *
+	 * Example: $parser = new jsqueez;
+	 */
 
-	var $reserved = array(
-		'abstract','as','boolean','break','byte','case','catch','char','class',
-		'const','continue','debugger','default','delete','do','double','else',
-		'enum','export','extends','false','final','finally','float','for',
-		'function','goto','if','implements','import','in','instanceof','int',
-		'long','native','new','null','package','private','protected','public',
-		'return','short','static','super','switch','synchronized','this',
-		'throw','throws','transient','true','try','typeof','var','void',
-		'while','with','yield','let',
-	);
-
-	function jsqueez()
+	function jsqueez($specialVarRx = '(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*')
 	{
+		$this->specialVarRx = $specialVarRx;
 		$this->reserved = array_flip($this->reserved);
 		$this->data = array();
 		$this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
 		$this->counter = 0;
 	}
 
-	function addJs($code) {$this->data[] =& $code;}
 
-	function get($singleLine = true)
+	/**
+	 * Does the job.
+	 *
+	 * Set $singleLine to false if you want optional
+	 * semi-colons to be replaced by line feeds.
+	 *
+	 * Example: $squeezed_js = $parser->squeeze($fat_js);
+	 */
+
+	function squeeze($code, $singleLine = true)
 	{
-		$code = implode(";\n", $this->data);
+		$code = trim($code);
+		if ('' === $f) return '';
 
 		if (false !== strpos($code, "\r")) $code = strtr(str_replace("\r\n", "\n", $code), "\r", "\n");
 
 		list($code, $this->strings ) = $this->extractStrings( $code);
 		list($code, $this->closures) = $this->extractClosures($code);
 
-		$key = "//''\"\"#0'";
+		$key = "//''\"\"#0'"; // This crap has a wonderful property: it can not happend in any valid javascript, even in strings
 		$this->closures[$key] =& $code;
 
 		$tree = array($key => array('parent' => false));
@@ -87,12 +98,26 @@ class jsqueez
 		return $code;
 	}
 
+
+	// Protected properties
+
+	var $varRx = '(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
+	var $reserved = array(
+		'abstract','as','boolean','break','byte','case','catch','char','class',
+		'const','continue','debugger','default','delete','do','double','else',
+		'enum','export','extends','false','final','finally','float','for',
+		'function','goto','if','implements','import','in','instanceof','int',
+		'long','native','new','null','package','private','protected','public',
+		'return','short','static','super','switch','synchronized','this',
+		'throw','throws','transient','true','try','typeof','var','void',
+		'while','with','yield','let',
+	);
+
+
+	// Protected methods
+
 	function extractStrings($f)
 	{
-		$f = trim($f);
-
-		if ('' === $f) return array('', array());
-
 		if ($cc_on = false !== strpos($f, '@cc_on'))
 		{
 			// Protect conditional comments from being removed
@@ -465,14 +490,14 @@ class jsqueez
 		$tree['used'] = array();
 		$vars =& $tree['used'];
 
-		if (preg_match_all("#\.?{$this->varRx}#", $closure, $w))
+		if (preg_match_all("#\.?(?<![a-zA-Z0-9_\$]){$this->varRx}#", $closure, $w))
 		{
 			foreach ($w[0] as $k) isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1;
 		}
 
 		if (preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
 		{
-			$v = preg_split("#(\.?{$this->specialVarRx})#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
+			$v = preg_split("#(\.?(?<![a-zA-Z0-9_\$]){$this->specialVarRx})#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
 			$a = count($v);
 			for ($i = 0; $i < $a; ++$i)
 			{
@@ -634,7 +659,7 @@ class jsqueez
 		$this->local_tree =& $tree['local'];
 		$this->used_tree  =& $tree['used'];
 
-		$tree['code'] = preg_replace_callback("#\.?{$this->varRx}#", array(&$this, 'getNewName'), $tree['code']);
+		$tree['code'] = preg_replace_callback("#\.?(?<![a-zA-Z0-9_\$]){$this->varRx}#", array(&$this, 'getNewName'), $tree['code']);
 		$tree['code'] = preg_replace_callback("#//''\"\"[0-9]+['\"]#", array(&$this, 'renameInString'), $tree['code']);
 
 		foreach ($tree['childs'] as $a => &$b)
@@ -651,7 +676,7 @@ class jsqueez
 		unset($this->strings[$a[0]]);
 
 		return preg_replace_callback(
-			"#\.?{$this->specialVarRx}#",
+			"#\.?(?<![a-zA-Z0-9_\$]){$this->specialVarRx}#",
 			array(&$this, 'getNewName'),
 			$b
 		);
