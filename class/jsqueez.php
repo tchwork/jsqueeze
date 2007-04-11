@@ -34,7 +34,6 @@
 * Does some local optimizations:
 * - replaces new Array/Object by []/{}
 * - multiple consecutive "var" declarations are merged with commas
-* - "for (..; ..; i++)" loops are optimized to "for (..; ..; ++i)"
 * - fix a bug in Safari's parser (http://forums.asp.net/thread/1585609.aspx)
 */
 
@@ -336,9 +335,6 @@ class jsqueez
 
 		// Fix "else ;" empty instructions
 		$f = preg_replace("'(?<![\$\.a-zA-Z0-9_])else\n'", 'else;', $f);
-
-		// Optimize "i++" to "++i" in "for" loops
-		$f = preg_replace("';([^\;\)\n]+)(\+\+|--)\)'", ';$2$1)', $f);
 
 		if (false !== strpos($f, 'throw'))
 		{
