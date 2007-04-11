@@ -15,9 +15,15 @@
 /*
 * This class shrinks javascript code
 *
+* Works with most valid Javascript code.
+* Tolerates missing semi-colons.
+* Respects Microsoft's conditional comments.
+* Three semi-colons ;;; are treated like single-line comments
+* (http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
+*
 * Removes comments, white chars and semi-colons.
 * Shortens every local vars, and global vars/methods/properties
-* when they begin with one or more "$" or a single "_".
+* when they begin with one or more "$" or with a single "_".
 * Shortens also local/global vars found in strings,
 * but only if they are prefixed as above.
 * If you use with/eval then be careful.
@@ -25,10 +31,11 @@
 * The shortened name is choosen by considering closures, variables
 * frequency and single characters frequency in the source.
 *
-* Works with most valid Javascript code.
-* Tolerates missing semi-colons.
-* Respects Microsoft's conditional comments.
-* Three semi-colons ;;; are treated like single-line comments.
+* Does some local optimizations:
+* - replaces new Array/Object by []/{}
+* - multiple consecutive "var" declarations are merged with commas
+* - "for (..; ..; i++)" loops are optimized to "for (..; ..; ++i)"
+* - fix a bug in Safari's parser (http://forums.asp.net/thread/1585609.aspx)
 */
 
 class jsqueez
@@ -148,7 +155,7 @@ class jsqueez
 			else switch ($f[$i])
 			{
 			case ';':
-				// Remove triple semi-colon (see http://dean.edwards.name/packer/2/usage/#triple-semi-colon)
+				// Remove triple semi-colon
 				if ($i>0 && ';' == $f[$i-1] && $i+1 < $len && ';' == $f[$i+1]) $f[$i] = $f[$i+1] = '/';
 				else
 				{
@@ -335,7 +342,7 @@ class jsqueez
 
 		if (false !== strpos($f, 'throw'))
 		{
-			// Fix for a bug in Safari's parser (see http://forums.asp.net/thread/1585609.aspx)
+			// Fix for a bug in Safari's parser
 			$f = preg_replace("'(?<![\$\.a-zA-Z0-9_])throw[^\$\.a-zA-Z0-9_][^;\}\n]*(?!;)'", '$0;', $f);
 			$f = str_replace(";\n", ';', $f);
 		}
