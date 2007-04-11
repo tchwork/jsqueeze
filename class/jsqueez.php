@@ -15,7 +15,7 @@
 /*
 * This class obfuscates javascript code
 *
-* Removes comments and white chars,
+* Removes comments, white chars and semi-colons.
 * Shortens every local vars, and global vars/methods/properties
 * when they begin with one or more "$" or a single "_".
 * Shortens also local/global vars found in strings,
@@ -115,7 +115,7 @@ class jsqueez
 						$instr = false;
 					}
 				}
-				else if ($f[$i] == $instr)
+				else if ($f[$i] == $instr || ('/' == $f[$i] && "/'" == $instr))
 				{
 					if ('*' == $instr)
 					{
@@ -127,7 +127,7 @@ class jsqueez
 					}
 					else
 					{
-						if ('/' == $instr) while (false !== strpos('gmi', $f[$i+1])) $s[] = $f[$i++];
+						if ("/'" == $instr) while (false !== strpos('gmi', $f[$i+1])) $s[] = $f[$i++];
 						$instr = false;
 						$s[] = $f[$i];
 					}
@@ -172,10 +172,10 @@ class jsqueez
 					$a = ' ' == $code[$j] ? $code[$j-1] : $code[$j];
 					if (false !== strpos('-!%&;<=>~:^+|,(*?[{n', $a))
 					{
-						$key = "//''\"\"" . $K++ . $instr = $f[$i];
+						$key = "//''\"\"" . $K++ . $instr = "/'";
 						$code[++$j] = $key;
 						isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
-						$strings[$key] = array($instr);
+						$strings[$key] = array('/');
 						$s =& $strings[$key];
 					}
 					else $code[++$j] = $f[$i];
@@ -198,6 +198,21 @@ class jsqueez
 				break;
 
 			case "\n":
+				if ($j > 5)
+				{
+					' ' == $code[$j] && --$j && array_pop($code);
+
+					$code[++$j] =
+						false !== strpos('kend', $code[$j-1])
+							&& preg_match(
+								"'(?<![\$\.a-zA-Z0-9_])(break|continue|return|yield)$'",
+								implode('', array_slice($code, -9))
+							)
+						? ';' : ' ';
+
+					break;
+				}
+
 			case "\t": $f[$i] = ' ';
 			case ' ':
 				if (!$j || ' ' == $code[$j]) break;
@@ -374,7 +389,7 @@ class jsqueez
 
 
 		// Replace multiple "var" declarations by a single one
-		$closure = preg_replace_callback("'(?<=[\n\}])var [^\n]+(?:\nvar [^\n]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
+		$closure = preg_replace_callback("'(?<=[\n\{\}])var [^\n]+(?:\nvar [^\n]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
 
 
 		// Get all local vars (functions, arguments and "var" prefixed)
@@ -407,10 +422,10 @@ class jsqueez
 						break;
 
 					case ')': case ']': case '}':
-						if (!$c--) break 2;
+						if ($c-- <= 0) break 2;
 						break;
 
-					case ';': case "\n":
+					case ';': case "\n": case ' ':
 						if (!$c) break 2;
 
 					default:
