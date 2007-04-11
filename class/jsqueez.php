@@ -39,30 +39,31 @@
 
 class jsqueez
 {
+	var $varRx = '(?<![a-zA-Z0-9_\$])(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
+	var $specialVarRx = '(?<![a-zA-Z0-9_\$])(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
+
+	var $reserved = array(
+		'abstract','as','boolean','break','byte','case','catch','char','class',
+		'const','continue','debugger','default','delete','do','double','else',
+		'enum','export','extends','false','final','finally','float','for',
+		'function','goto','if','implements','import','in','instanceof','int',
+		'long','native','new','null','package','private','protected','public',
+		'return','short','static','super','switch','synchronized','this',
+		'throw','throws','transient','true','try','typeof','var','void',
+		'while','with','yield','let',
+	);
+
 	function jsqueez()
 	{
-		$this->reserved = array(
-			'abstract','as','boolean','break','byte','case','catch','char','class',
-			'const','continue','debugger','default','delete','do','double','else',
-			'enum','export','extends','false','final','finally','float','for',
-			'function','goto','if','implements','import','in','instanceof','int',
-			'long','native','new','null','package','private','protected','public',
-			'return','short','static','super','switch','synchronized','this',
-			'throw','throws','transient','true','try','typeof','var','void',
-			'while','with','yield','let',
-		);
-
 		$this->reserved = array_flip($this->reserved);
 		$this->data = array();
 		$this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
 		$this->counter = 0;
-		$this->varRx = '(?<![a-zA-Z0-9_\$])(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
-		$this->specialVarRx = '(?<![a-zA-Z0-9_\$])(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
 	}
 
 	function addJs($code) {$this->data[] =& $code;}
 
-	function get()
+	function get($singleLine = true)
 	{
 		$code = implode(";\n", $this->data);
 
@@ -80,6 +81,8 @@ class jsqueez
 
 		$code = substr($tree[$key]['code'], 1);
 		$code = str_replace(array_keys($this->strings), array_values($this->strings), $code);
+
+		if ($singleLine) $code = strtr($code, "\n", ';');
 
 		return $code;
 	}
@@ -344,8 +347,8 @@ class jsqueez
 		}
 
 		$r1 = array( // keywords with a direct object
-			'delete','do','else','function','in','instanceof','new',
-			'return','throw','typeof','var','void','yield','let',
+			'case','delete','do','else','function','in','instanceof',
+			'new','return','throw','typeof','var','void','yield','let',
 		);
 
 		$r2 = array( // keywords with a subject
