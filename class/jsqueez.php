@@ -13,7 +13,7 @@
 
 
 /*
-* This class obfuscates javascript code
+* This class shrinks javascript code
 *
 * Removes comments, white chars and semi-colons.
 * Shortens every local vars, and global vars/methods/properties
@@ -170,7 +170,12 @@ class jsqueez
 				else
 				{
 					$a = ' ' == $code[$j] ? $code[$j-1] : $code[$j];
-					if (false !== strpos('-!%&;<=>~:^+|,(*?[{n', $a))
+					if (false !== strpos('-!%&;<=>~:^+|,(*?[{', $a)
+						|| (false !== strpos('oenfd', $a)
+						&& preg_match(
+							"'(?<![\$\.a-zA-Z0-9_])(do|else|return|typeof|yield) ?$'",
+							implode('', array_slice($code, -8))
+						)))
 					{
 						$key = "//''\"\"" . $K++ . $instr = "/'";
 						$code[++$j] = $key;
@@ -357,7 +362,7 @@ class jsqueez
 	{
 		$code = ';' . $code;
 
-		$f = preg_split("'(?<![\$\.a-zA-Z0-9_])(function[ \(].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
+		$f = preg_split("'(?<![a-zA-Z0-9_\$])(function[ \(].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 		$i = count($f) - 1;
 		$closures = array();
 
@@ -397,7 +402,7 @@ class jsqueez
 		$tree['local'] = array();
 		$vars =& $tree['local'];
 
-		if (preg_match("'\((.*?)\)'", $closure, $v))
+		if (preg_match("'\((.+?)\)'", $closure, $v))
 		{
 			$v = explode(',', $v[1]);
 			foreach ($v as $w) $vars[$w] = 0;
@@ -548,10 +553,13 @@ class jsqueez
 
 			foreach ($tree['local'] as $k => $v)
 			{
-				if (!preg_match("#\.?{$this->specialVarRx}#", $k))
+				if ('.' == $k[0]) $k = substr($k, 1);
+
+				if (!preg_match("#^{$this->specialVarRx}$#", $k))
 				{
 					foreach (count_chars($k, 1) as $k => $w) $this->charFreq[$k] += $w * $v;
 				}
+				else if (2 == strlen($k)) $tree['used'][] = $k[1];
 			}
 
 			arsort($this->charFreq);
@@ -593,14 +601,14 @@ class jsqueez
 			case '.':
 				if (!isset($tree['local'][substr($var, 1)]))
 				{
-					$tree['local'][$var] = '#' . (preg_match("'^\.{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName() : substr($var, 1));
+					$tree['local'][$var] = '#' . (3 < strlen($var) && preg_match("'^\.{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName($tree['used']) : substr($var, 1));
 				}
 				break;
 
 			case '#': break;
 
 			default:
-				$base = preg_match("'^{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName() : $var;
+				$base = 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName($tree['used']) : $var;
 				$tree['local'][$var] = $base;
 				if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $base;
 			}
