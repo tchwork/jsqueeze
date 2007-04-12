@@ -76,7 +76,7 @@ class jsqueez
 	function squeeze($code, $singleLine = true)
 	{
 		$code = trim($code);
-		if ('' === $f) return '';
+		if ('' === $code) return '';
 
 		if (false !== strpos($code, "\r")) $code = strtr(str_replace("\r\n", "\n", $code), "\r", "\n");
 
