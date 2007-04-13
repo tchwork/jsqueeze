@@ -21,10 +21,12 @@
 *
 * Features:
 * - Removes comments and white spaces.
-* - Shortens every local vars, and specifically global vars, methods and
-*   properties who begin with one or more "$" or with a single "_".
+* - Renames every local vars, typically to a single character.
+* - Shortens also global vars, methods and properties, but only if they
+*   are marked special by some naming convention. By default, special
+*   var names begin with one or more "$", or with a single "_".
 * - Shortens also local/global vars found in strings,
-*   but only if they are prefixed as above.
+*   but only if they are marked special.
 * - Respects Microsoft's conditional comments.
 *
 * Notes:
@@ -50,11 +52,19 @@ class jsqueez
 	 *
 	 * $specialVarRx defines the regular expression of special variables names
 	 * for global vars, methods, properties and in string substitution.
+	 * Set it to false if you don't want this feature.
 	 *
-	 * Example: $parser = new jsqueez;
+	 * If the analysed javascript source contains a single line comment like
+	 * this one, then the directive will overwrite $specialVarRx:
+	 *
+	 * // jsqueez.specialVarRx = your_specialVar_regexp_here
+	 *
+	 * Only the first directive is parsed, others are ignored. It is not possible
+	 * to redefine $specialVarRx in the middle of the javascript source.
+	 *
 	 */
 
-	function jsqueez($specialVarRx = '(?:\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*')
+	function jsqueez($specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*')
 	{
 		$this->specialVarRx = $specialVarRx;
 		$this->reserved = array_flip($this->reserved);
@@ -70,13 +80,30 @@ class jsqueez
 	 * Set $singleLine to false if you want optional
 	 * semi-colons to be replaced by line feeds.
 	 *
-	 * Example: $squeezed_js = $parser->squeeze($fat_js);
+	 * Example:
+	 * $parser = new jsqueez;
+	 * $squeezed_js = $parser->squeeze($fat_js);
 	 */
 
 	function squeeze($code, $singleLine = true)
 	{
 		$code = trim($code);
 		if ('' === $code) return '';
+
+		if (preg_match("#//[ \t]*jsqueez\.specialVarRx[ \t]*=[ \t]*([\"']?)(.*)\1#i", $code, $key))
+		{
+			if (!$key[1])
+			{
+				$key[2] = trim($key[2]);
+				$key[1] = strtolower($key[2]);
+				$key[1] = $key[1] && $key[1] != 'false' && $key[1] != 'none' && $key[1] != 'off';
+			}
+
+			$this->specialVarRx = $key[1] ? $key[2] : false;
+		}
+
+		// Remove capturing parentheses from $this->specialVarRx
+		$this->specialVarRx && $this->specialVarRx = preg_replace('/(?<!\\\\)((?:\\\\\\\\)*)\((?!\?)/', '(?:', $this->specialVarRx);
 
 		if (false !== strpos($code, "\r")) $code = strtr(str_replace("\r\n", "\n", $code), "\r", "\n");
 
@@ -495,7 +522,7 @@ class jsqueez
 			foreach ($w[0] as $k) isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1;
 		}
 
-		if (preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
+		if ($this->specialVarRx && preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
 		{
 			$v = preg_split("#(\.?(?<![a-zA-Z0-9_\$]){$this->specialVarRx})#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
 			$a = count($v);
@@ -586,7 +613,7 @@ class jsqueez
 			{
 				if ('.' == $k[0]) $k = substr($k, 1);
 
-				if (!preg_match("#^{$this->specialVarRx}$#", $k))
+				if (!$this->specialVarRx || !preg_match("#^{$this->specialVarRx}$#", $k))
 				{
 					foreach (count_chars($k, 1) as $k => $w) $this->charFreq[$k] += $w * $v;
 				}
@@ -632,14 +659,14 @@ class jsqueez
 			case '.':
 				if (!isset($tree['local'][substr($var, 1)]))
 				{
-					$tree['local'][$var] = '#' . (3 < strlen($var) && preg_match("'^\.{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName($tree['used']) : substr($var, 1));
+					$tree['local'][$var] = '#' . ($this->specialVarRx && 3 < strlen($var) && preg_match("'^\.{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName($tree['used']) : substr($var, 1));
 				}
 				break;
 
 			case '#': break;
 
 			default:
-				$base = 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName($tree['used']) : $var;
+				$base = $this->specialVarRx && 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName($tree['used']) : $var;
 				$tree['local'][$var] = $base;
 				if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $base;
 			}
@@ -660,7 +687,7 @@ class jsqueez
 		$this->used_tree  =& $tree['used'];
 
 		$tree['code'] = preg_replace_callback("#\.?(?<![a-zA-Z0-9_\$]){$this->varRx}#", array(&$this, 'getNewName'), $tree['code']);
-		$tree['code'] = preg_replace_callback("#//''\"\"[0-9]+['\"]#", array(&$this, 'renameInString'), $tree['code']);
+		$this->specialVarRx && $tree['code'] = preg_replace_callback("#//''\"\"[0-9]+['\"]#", array(&$this, 'renameInString'), $tree['code']);
 
 		foreach ($tree['childs'] as $a => &$b)
 		{
