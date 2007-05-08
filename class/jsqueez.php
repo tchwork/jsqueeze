@@ -393,7 +393,7 @@ class jsqueez
 
 		if (false !== strpos($f, 'throw'))
 		{
-			// Fix for a bug in Safari's parser
+			// Fix a bug in Safari's parser
 			$f = preg_replace("'(?<![\$\.a-zA-Z0-9_])throw[^\$\.a-zA-Z0-9_][^;\}\n]*(?!;)'", '$0;', $f);
 			$f = str_replace(";\n", ';', $f);
 		}
