@@ -64,13 +64,20 @@ class jsqueez
 	 *
 	 */
 
-	function jsqueez($specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*')
+	var $specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
+
+	function __construct($specialVarRx = false)
 	{
-		$this->specialVarRx = $specialVarRx;
+		$specialVarRx && $this->specialVarRx = $specialVarRx;
 		$this->reserved = array_flip($this->reserved);
 		$this->data = array();
 		$this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
 		$this->counter = 0;
+	}
+
+	function jsqueez($specialVarRx = false)
+	{
+		$this->__construct($specialVarRx);
 	}
 
 
