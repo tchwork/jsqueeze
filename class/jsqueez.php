@@ -22,15 +22,15 @@
 * Features:
 * - Removes comments and white spaces.
 * - Renames every local vars, typically to a single character.
-* - Shortens also global vars, methods and properties, but only if they
+* - Renames also global vars, methods and properties, but only if they
 *   are marked special by some naming convention. By default, special
 *   var names begin with one or more "$", or with a single "_".
-* - Shortens also local/global vars found in strings,
+* - Renames also local/global vars found in strings,
 *   but only if they are marked special.
 * - Respects Microsoft's conditional comments.
 *
 * Notes:
-* - Shortened names are choosen by considering closures,
+* - New variables names are choosen by considering closures,
 *   variables frequency and single characters frequency.
 * - If you use with/eval then be careful.
 *
