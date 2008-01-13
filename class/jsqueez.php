@@ -64,7 +64,7 @@ class jsqueez
 	 *
 	 */
 
-	var $specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9\$])[a-zA-Z0-9_\$]*';
+	var $specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
 
 	function __construct($specialVarRx = false)
 	{
@@ -135,7 +135,7 @@ class jsqueez
 
 	// Protected properties
 
-	var $varRx = '(?:[a-zA-Z_\$])[a-zA-Z0-9_\$]*';
+	var $varRx = '(?:[a-zA-Z_$])[a-zA-Z0-9_$]*';
 	var $reserved = array(
 		'abstract','as','boolean','break','byte','case','catch','char','class',
 		'const','continue','debugger','default','delete','do','double','else',
@@ -156,8 +156,8 @@ class jsqueez
 		{
 			// Protect conditional comments from being removed
 			$f = str_replace('#', '##', $f);
-			$f = preg_replace("'/\*@cc_on(?![\$\.a-zA-Z0-9_])'", '1#@cc_on', $f);
-			$f = preg_replace( "'//@cc_on(?![\$\.a-zA-Z0-9_])([^\n]+)'", '2#@cc_on$1@#3', $f);
+			$f = preg_replace("'/\*@cc_on(?![\$.a-zA-Z0-9_])'", '1#@cc_on', $f);
+			$f = preg_replace( "'//@cc_on(?![\$.a-zA-Z0-9_])([^\n]+)'", '2#@cc_on$1@#3', $f);
 			$f = str_replace('@*/', '@#1', $f);
 		}
 
@@ -241,7 +241,7 @@ class jsqueez
 					if (false !== strpos('-!%&;<=>~:^+|,(*?[{', $a)
 						|| (false !== strpos('oenfd', $a)
 						&& preg_match(
-							"'(?<![\$\.a-zA-Z0-9_])(do|else|return|typeof|yield) ?$'",
+							"'(?<![\$.a-zA-Z0-9_])(do|else|return|typeof|yield) ?$'",
 							implode('', array_slice($code, -8))
 						)))
 					{
@@ -278,7 +278,7 @@ class jsqueez
 					$code[++$j] =
 						false !== strpos('kend', $code[$j-1])
 							&& preg_match(
-								"'(?<![\$\.a-zA-Z0-9_])(break|continue|return|yield)$'",
+								"'(?<![\$.a-zA-Z0-9_])(break|continue|return|yield)$'",
 								implode('', array_slice($code, -9))
 							)
 						? ';' : ' ';
@@ -301,24 +301,23 @@ class jsqueez
 		$code = implode('', $code);
 		$cc_on && $this->restoreCc($code, false);
 
-		// Remove unwanted spaces
-		$code = str_replace('- -', '-#-', $code);
-		$code = str_replace('+ +', '+#+', $code);
-		$code = preg_replace("' ?([-!%&;<=>~:\\/\\^\\+\\|\\,\\(\\)\\*\\?\\[\\]\\{\\}]+) ?'", '$1', $code);
-		$code = str_replace('-#-', '- -', $code);
-		$code = str_replace('+#+', '+ +', $code);
+		// Protect wanted spaces and remove unwanted ones
+		$code = str_replace('- -', "-\x7F-", $code);
+		$code = str_replace('+ +', "+\x7F+", $code);
+		$code = preg_replace("'(\d)\s+(\.\s*[a-zA-Z\$_[(])'", "$1\x7F$2", $code);
+		$code = preg_replace("' ?([-!%&;<=>~:./^+|,()*?[\]{}]+) ?'", '$1', $code);
 
 		// Replace new Array/Object by []/{}
-		false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?:\(\)|([;\]\)\},:]))'", '[]$1', $code);
-		false !== strpos($code, 'new Object') && $code = preg_replace("'new Object(?:\(\)|([;\]\)\},:]))'", '{}$1', $code);
+		false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?:\(\)|([;\])},:]))'", '[]$1', $code);
+		false !== strpos($code, 'new Object') && $code = preg_replace("'new Object(?:\(\)|([;\])},:]))'", '{}$1', $code);
 
 		// Add missing semi-colons after curly braces
-		$code = preg_replace("'\}(?![:,;\.\(\)\]\}]|(else|catch|finally|while)[^\$\.a-zA-Z0-9_])'", '};', $code);
+		$code = preg_replace("'\}(?![:,;.()\]}]|(else|catch|finally|while)[^\$.a-zA-Z0-9_])'", '};', $code);
 
 		// Tag possible empty instruction for easy detection
-		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])if\('"   , '1#(', $code);
-		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])for\('"  , '2#(', $code);
-		$code = preg_replace("'(?<![\$\.a-zA-Z0-9_])while\('", '3#(', $code);
+		$code = preg_replace("'(?<![\$.a-zA-Z0-9_])if\('"   , '1#(', $code);
+		$code = preg_replace("'(?<![\$.a-zA-Z0-9_])for\('"  , '2#(', $code);
+		$code = preg_replace("'(?<![\$.a-zA-Z0-9_])while\('", '3#(', $code);
 
 		$forPool = array();
 		$instrPool = array();
@@ -396,12 +395,12 @@ class jsqueez
 		$cc_on && $f = str_replace('@#3', "\n", $f);
 
 		// Fix "else ;" empty instructions
-		$f = preg_replace("'(?<![\$\.a-zA-Z0-9_])else\n'", 'else;', $f);
+		$f = preg_replace("'(?<![\$.a-zA-Z0-9_])else\n'", 'else;', $f);
 
 		if (false !== strpos($f, 'throw'))
 		{
 			// Fix a bug in Safari's parser
-			$f = preg_replace("'(?<![\$\.a-zA-Z0-9_])throw[^\$\.a-zA-Z0-9_][^;\}\n]*(?!;)'", '$0;', $f);
+			$f = preg_replace("'(?<![\$.a-zA-Z0-9_])throw[^\$.a-zA-Z0-9_][^;\}\n]*(?!;)'", '$0;', $f);
 			$f = str_replace(";\n", ';', $f);
 		}
 
@@ -420,6 +419,9 @@ class jsqueez
 		$f = preg_replace("'(?<=--|\+\+)(?<![a-zA-Z0-9_\$])(" . implode('|', $r1) . ")(?![a-zA-Z0-9_\$])'", "\n$1", $f);
 		$f = preg_replace("'(?<![a-zA-Z0-9_\$])for\neach\('", 'for each(', $f);
 
+		// Restore wanted spaces
+		$f = strtr($f, "\x7F", ' ');
+
 		return array($f, $strings);
 	}
 
@@ -427,7 +429,7 @@ class jsqueez
 	{
 		$code = ';' . $code;
 
-		$f = preg_split("'(?<![a-zA-Z0-9_\$])(function[ \(].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
+		$f = preg_split("'(?<![a-zA-Z0-9_\$])(function[ (].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 		$i = count($f) - 1;
 		$closures = array();
 
@@ -473,7 +475,7 @@ class jsqueez
 			foreach ($v as $w) $vars[$w] = 0;
 		}
 
-		$v = preg_split("'(?<![\$\.a-zA-Z0-9_])var '", $closure);
+		$v = preg_split("'(?<![\$.a-zA-Z0-9_])var '", $closure);
 		if ($i = count($v) - 1)
 		{
 			$w = array();
