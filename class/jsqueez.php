@@ -461,7 +461,7 @@ class jsqueez
 
 
 		// Replace multiple "var" declarations by a single one
-		$closure = preg_replace_callback("'(?<=[\n\{\}])var [^\n]+(?:\nvar [^\n]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
+		$closure = preg_replace_callback("'(?<=[\n\{\}])var [^\n\{\}]+(?:\nvar [^\n\{\}]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
 
 
 		// Get all local vars (functions, arguments and "var" prefixed)
@@ -469,7 +469,7 @@ class jsqueez
 		$tree['local'] = array();
 		$vars =& $tree['local'];
 
-		if (preg_match("'\((.+?)\)'", $closure, $v))
+		if (preg_match("'\((.*?)\)'", $closure, $v) && '' !== $v[1])
 		{
 			$v = explode(',', $v[1]);
 			foreach ($v as $w) $vars[$w] = 0;
@@ -526,21 +526,34 @@ class jsqueez
 		$tree['used'] = array();
 		$vars =& $tree['used'];
 
-		if (preg_match_all("#\.?(?<![a-zA-Z0-9_\$]){$this->varRx}#", $closure, $w))
+		if (preg_match_all("#([.,{]?)(?<![a-zA-Z0-9_\$])({$this->varRx})(:?)#", $closure, $w, PREG_SET_ORDER))
 		{
-			foreach ($w[0] as $k) isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1;
+			foreach ($w as $k)
+			{
+				if ($k[1] && '.' !== $k[1] && ':' === $k[3]) $k = '.' . $k[2];
+				else $k = $k[2];
+
+				isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1;
+			}
 		}
 
 		if ($this->specialVarRx && preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
 		{
-			$v = preg_split("#(\.?(?<![a-zA-Z0-9_\$]){$this->specialVarRx})#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
+			$v = preg_split("#([.,{]?(?<![a-zA-Z0-9_\$]){$this->specialVarRx}:?)#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
 			$a = count($v);
 			for ($i = 0; $i < $a; ++$i)
 			{
 				$k = $v[$i];
 
-				if ($i%2)
+				if (1 === $i%2)
 				{
+					if (',' === $k[0] || '{' === $k[0])
+					{
+						if (':' === substr($k, -1)) $k = '.' . substr($k, 1, -1);
+						else $k = substr($k, 1);
+					}
+					else if (':' === substr($k, -1)) $k = substr($k, 0, -1);
+
 					$w =& $tree;
 
 					while (isset($w['parent']) && !(isset($w['used'][$k]) || isset($w['local'][$k]))) $w =& $w['parent'];
@@ -550,7 +563,7 @@ class jsqueez
 					unset($w);
 				}
 
-				if (0 == $i%2 || !isset($vars[$k])) foreach (count_chars($v[$i], 1) as $k => $w) $this->charFreq[$k] += $w;
+				if (0 === $i%2 || !isset($vars[$k])) foreach (count_chars($v[$i], 1) as $k => $w) $this->charFreq[$k] += $w;
 			}
 		}
 
@@ -695,7 +708,7 @@ class jsqueez
 		$this->local_tree =& $tree['local'];
 		$this->used_tree  =& $tree['used'];
 
-		$tree['code'] = preg_replace_callback("#\.?(?<![a-zA-Z0-9_\$]){$this->varRx}#", array(&$this, 'getNewName'), $tree['code']);
+		$tree['code'] = preg_replace_callback("#[.,{]?(?<![a-zA-Z0-9_\$]){$this->varRx}:?#", array(&$this, 'getNewName'), $tree['code']);
 		$this->specialVarRx && $tree['code'] = preg_replace_callback("#//''\"\"[0-9]+['\"]#", array(&$this, 'renameInString'), $tree['code']);
 
 		foreach ($tree['childs'] as $a => &$b)
@@ -712,7 +725,7 @@ class jsqueez
 		unset($this->strings[$a[0]]);
 
 		return preg_replace_callback(
-			"#\.?(?<![a-zA-Z0-9_\$]){$this->specialVarRx}#",
+			"#[.,{]?(?<![a-zA-Z0-9_\$]){$this->specialVarRx}:?#",
 			array(&$this, 'getNewName'),
 			$b
 		);
@@ -722,7 +735,27 @@ class jsqueez
 	{
 		$m = $m[0];
 
-		return isset($this->reserved[$m])
+		$pre = '.' === $m[0] ? '.' : '';
+		$post = '';
+
+		if (',' === $m[0] || '{' === $m[0])
+		{
+			$pre = $m[0];
+
+			if (':' === substr($m, -1))
+			{
+				$post = ':';
+				$m = '.' . substr($m, 1, -1);
+			}
+			else $m = substr($m, 1);
+		}
+		else if (':' === substr($m, -1))
+		{
+			$post = ':';
+			$m = substr($m, 0, -1);
+		}
+
+		$post = (isset($this->reserved[$m])
 			? $m
 			: (
 				  isset($this->local_tree[$m])
@@ -732,7 +765,10 @@ class jsqueez
 					? $this->used_tree[$m]
 					: $m
 				)
-			);
+			)
+		) . $post;
+
+		return $pre . ('.' === $post[0] ? substr($post, 1) : $post);
 	}
 
 	function getNextName(&$exclude = array(), $recursive = false)
