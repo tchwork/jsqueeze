@@ -530,7 +530,11 @@ class jsqueez
 		{
 			foreach ($w as $k)
 			{
-				if ($k[1] && '.' !== $k[1] && ':' === $k[3]) $k = '.' . $k[2];
+				if (',' === $k[1] || '{' === $k[1])
+				{
+					if (':' === substr($k[3], -1)) $k = '.' . $k[2];
+					else $k = $k[2];
+				}
 				else $k = $k[1] . $k[2];
 
 				isset($vars[$k]) ? ++$vars[$k] : $vars[$k] = 1;
