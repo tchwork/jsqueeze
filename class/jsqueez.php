@@ -112,7 +112,10 @@ class jsqueez
 		// Remove capturing parentheses from $this->specialVarRx
 		$this->specialVarRx && $this->specialVarRx = preg_replace('/(?<!\\\\)((?:\\\\\\\\)*)\((?!\?)/', '(?:', $this->specialVarRx);
 
-		if (false !== strpos($code, "\r")) $code = strtr(str_replace("\r\n", "\n", $code), "\r", "\n");
+		false !== strpos($code, "\r"          ) && $code = strtr(str_replace("\r\n", "\n", $code), "\r", "\n");
+		false !== strpos($code, "\xC2\x85"    ) && $code = str_replace("\xC2\x85"    , "\n", $code); // Next Line
+		false !== strpos($code, "\xE2\x80\xA8") && $code = str_replace("\xE2\x80\xA8", "\n", $code); // Line Separator
+		false !== strpos($code, "\xE2\x80\xA9") && $code = str_replace("\xE2\x80\xA9", "\n", $code); // Paragraph Separator
 
 		list($code, $this->strings ) = $this->extractStrings( $code);
 		list($code, $this->closures) = $this->extractClosures($code);
@@ -304,7 +307,7 @@ class jsqueez
 		// Protect wanted spaces and remove unwanted ones
 		$code = str_replace('- -', "-\x7F-", $code);
 		$code = str_replace('+ +', "+\x7F+", $code);
-		$code = preg_replace("'(\d)\s+(\.\s*[a-zA-Z\$_[(])'", "$1\x7F$2", $code);
+		$code = preg_replace("'(\d)\s+\.\s*([a-zA-Z\$_[(])'", "$1\x7F.$2", $code);
 		$code = preg_replace("' ?([-!%&;<=>~:./^+|,()*?[\]{}]+) ?'", '$1', $code);
 
 		// Replace new Array/Object by []/{}
@@ -497,7 +500,7 @@ class jsqueez
 						if ($c-- <= 0) break 2;
 						break;
 
-					case ';': case "\n": case ' ':
+					case ';': case "\n":
 						if (!$c) break 2;
 
 					default:
