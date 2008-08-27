@@ -694,14 +694,14 @@ class jsqueez
 			case '.':
 				if (!isset($tree['local'][substr($var, 1)]))
 				{
-					$tree['local'][$var] = '#' . ($this->specialVarRx && 3 < strlen($var) && preg_match("'^\.{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName($tree['used']) : substr($var, 1));
+					$tree['local'][$var] = '#' . ($this->specialVarRx && 3 < strlen($var) && preg_match("'^\.{$this->specialVarRx}$'", $var) ? $this->getNextName($tree['used']) . '$' : substr($var, 1));
 				}
 				break;
 
 			case '#': break;
 
 			default:
-				$base = $this->specialVarRx && 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? '$' . $this->getNextName($tree['used']) : $var;
+				$base = $this->specialVarRx && 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? $this->getNextName($tree['used']) . '$' : $var;
 				$tree['local'][$var] = $base;
 				if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $base;
 			}
