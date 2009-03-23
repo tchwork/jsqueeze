@@ -36,7 +36,8 @@
 *
 * Bonus:
 * - Replaces new Array/Object by []/{}
-* - Merges multiple consecutive "var" declarations with commas
+* - Merges consecutive "var" declarations with commas
+* - Merges consecutive concatened strings
 * - Fix a bug in Safari's parser (http://forums.asp.net/thread/1585609.aspx)
 * - Can replace optional semi-colons by line feeds,
 *   thus facilitating output debugging.
@@ -172,6 +173,12 @@ class jsqueez
 
 		$instr = false;
 
+		$q = array(
+			"'", '"',
+			"'" => 0,
+			'"' => 0,
+		);
+
 		// Extract strings, removes comments
 		$len = strlen($f);
 		for ($i = 0; $i < $len; ++$i)
@@ -198,21 +205,30 @@ class jsqueez
 					}
 					else
 					{
-						if ("/'" == $instr) while (false !== strpos('gmi', $f[$i+1])) $s[] = $f[$i++];
+						if ("/'" == $instr)
+						{
+							while (false !== strpos('gmi', $f[$i+1])) $s[] = $f[$i++];
+							$s[] = $f[$i];
+						}
+
 						$instr = false;
-						$s[] = $f[$i];
 					}
 				}
 				else if ('*' == $instr) ;
 				else if ('\\' == $f[$i])
 				{
-					if ("\n" == $f[$i+1]) ++$i;
-					else
+					++$i;
+
+					if ("\n" != $f[$i])
 					{
-						$s[] = $f[$i];
-						++$i;
-						$s[] = $f[$i];
+						isset($q[$f[$i]]) && ++$q[$f[$i]];
+						$s[] = '\\' . $f[$i];
 					}
+				}
+				else if ("'" == $f[$i] || '"' == $f[$i])
+				{
+					++$q[$f[$i]];
+					$s[] = '\\' . $f[$i];
 				}
 				else $s[] = $f[$i];
 			}
@@ -223,7 +239,7 @@ class jsqueez
 				if ($i>0 && ';' == $f[$i-1] && $i+1 < $len && ';' == $f[$i+1]) $f[$i] = $f[$i+1] = '/';
 				else
 				{
-					$code[++$j] = $f[$i];
+					$code[++$j] = ';';
 					break;
 				}
 
@@ -254,22 +270,19 @@ class jsqueez
 						$strings[$key] = array('/');
 						$s =& $strings[$key];
 					}
-					else $code[++$j] = $f[$i];
+					else $code[++$j] = '/';
 				}
 
 				break;
 
 			case "'":
 			case '"':
-				if ($f[$i+1] == $f[$i]) $code[++$j] = $f[$i] . $f[++$i];
-				else
-				{
-					$key = "//''\"\"" . $K++ . $instr = $f[$i];
-					$code[++$j] = $key;
-					isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
-					$strings[$key] = array($instr);
-					$s =& $strings[$key];
-				}
+				$instr = $f[$i];
+				$key = "//''\"\"" . $K++ . "'";
+				$code[++$j] = $key;
+				isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
+				$strings[$key] = array();
+				$s =& $strings[$key];
 
 				break;
 
@@ -308,7 +321,7 @@ class jsqueez
 		$code = str_replace('- -', "-\x7F-", $code);
 		$code = str_replace('+ +', "+\x7F+", $code);
 		$code = preg_replace("'(\d)\s+\.\s*([a-zA-Z\$_[(])'", "$1\x7F.$2", $code);
-		$code = preg_replace("' ?([-!%&;<=>~:./^+|,()*?[\]{}]+) ?'", '$1', $code);
+		$code = preg_replace("# ?([-!%&;<=>~:.'\"/^+|,()*?[\]{}]+) ?#", '$1', $code);
 
 		// Replace new Array/Object by []/{}
 		false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?:\(\)|([;\])},:]))'", '[]$1', $code);
@@ -421,6 +434,18 @@ class jsqueez
 		$f = preg_replace("'(?<!(?<![a-zA-Z0-9_\$])do)(?<!(?<![a-zA-Z0-9_\$])else) if\('", "\nif(", $f);
 		$f = preg_replace("'(?<=--|\+\+)(?<![a-zA-Z0-9_\$])(" . implode('|', $r1) . ")(?![a-zA-Z0-9_\$])'", "\n$1", $f);
 		$f = preg_replace("'(?<![a-zA-Z0-9_\$])for\neach\('", 'for each(', $f);
+
+		// Merge strings
+		if ($q["'"] > $q['"']) $q = array($q[1], $q[0]);
+		$f = preg_replace("#//''\"\"[0-9]+'#", $q[0] . '$0' . $q[0], $f);
+		strpos($f, $q[0] . '+' . $q[0]) && $f = str_replace($q[0] . '+' . $q[0], '', $f);
+		$len = count($strings);
+		foreach ($strings as $r1 => &$r2)
+		{
+			$r2 = "/'" == substr($r1, -2)
+				? strtr($r2, array("\\'" => "'", '\\"' => '"')):
+				: str_replace('\\' . $q[1], $q[1], $r2);
+		}
 
 		// Restore wanted spaces
 		$f = strtr($f, "\x7F", ' ');
@@ -544,7 +569,7 @@ class jsqueez
 			}
 		}
 
-		if ($this->specialVarRx && preg_match_all("#//''\"\"[0-9]+['\"]#", $closure, $w)) foreach ($w[0] as $a)
+		if ($this->specialVarRx && preg_match_all("#//''\"\"[0-9]+'#", $closure, $w)) foreach ($w[0] as $a)
 		{
 			$v = preg_split("#([.,{]?(?<![a-zA-Z0-9_\$]){$this->specialVarRx}:?)#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
 			$a = count($v);
@@ -722,7 +747,7 @@ class jsqueez
 		$this->used_tree  =& $tree['used'];
 
 		$tree['code'] = preg_replace_callback("#[.,{]?(?<![a-zA-Z0-9_\$]){$this->varRx}:?#", array(&$this, 'getNewName'), $tree['code']);
-		$this->specialVarRx && $tree['code'] = preg_replace_callback("#//''\"\"[0-9]+['\"]#", array(&$this, 'renameInString'), $tree['code']);
+		$this->specialVarRx && $tree['code'] = preg_replace_callback("#//''\"\"[0-9]+'#", array(&$this, 'renameInString'), $tree['code']);
 
 		foreach ($tree['childs'] as $a => &$b)
 		{
