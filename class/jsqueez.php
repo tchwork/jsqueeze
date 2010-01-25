@@ -15,6 +15,7 @@
 /*
 *
 * This class shrinks Javascript code
+* (a process called minification nowdays)
 *
 * Should work with most valid Javascript code,
 * even when semi-colons are missing.
@@ -28,9 +29,11 @@
 * - Renames also local/global vars found in strings,
 *   but only if they are marked special.
 * - Respects Microsoft's conditional comments.
+* - Output is optimized for later HTTP compression.
 *
 * Notes:
-* - New variables names are choosen by considering closures,
+* - In order to maximise later HTTP compression (deflate, gzip),
+*   new variables names are choosen by considering closures,
 *   variables frequency and single characters frequency.
 * - If you use with/eval then be careful.
 *
