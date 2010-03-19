@@ -28,7 +28,7 @@
 *   var names begin with one or more "$", or with a single "_".
 * - Renames also local/global vars found in strings,
 *   but only if they are marked special.
-* - Respects Microsoft's conditional comments.
+* - Keep Microsoft's conditional comments.
 * - Output is optimized for later HTTP compression.
 *
 * Notes:
@@ -44,6 +44,7 @@
 * - Fix a bug in Safari's parser (http://forums.asp.net/thread/1585609.aspx)
 * - Can replace optional semi-colons by line feeds,
 *   thus facilitating output debugging.
+* - Keep important comments marked with /*!...
 * - Treats three semi-colons ;;; like single-line comments
 *   (http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
 *
@@ -56,7 +57,7 @@ class jsqueez
 	 *
 	 * $specialVarRx defines the regular expression of special variables names
 	 * for global vars, methods, properties and in string substitution.
-	 * Set it to false if you don't want this feature.
+	 * Set it to false if you want the default.
 	 *
 	 * If the analysed javascript source contains a single line comment like
 	 * this one, then the directive will overwrite $specialVarRx:
@@ -135,6 +136,7 @@ class jsqueez
 		$code = str_replace(array_keys($this->strings), array_values($this->strings), $code);
 
 		if ($singleLine) $code = strtr($code, "\n", ';');
+		false !== strpos($code, "\r") && $code = strtr(trim($code), "\r", "\n");
 
 		return $code;
 	}
@@ -198,7 +200,8 @@ class jsqueez
 				}
 				else if ($f[$i] == $instr || ('/' == $f[$i] && "/'" == $instr))
 				{
-					if ('*' == $instr)
+					if ('!' == $instr) ;
+					else if ('*' == $instr)
 					{
 						if ('/' == $f[$i+1])
 						{
@@ -218,6 +221,17 @@ class jsqueez
 					}
 				}
 				else if ('*' == $instr) ;
+				else if ('!' == $instr)
+				{
+					if ('*' == $f[$i] && '/' == $f[$i+1])
+					{
+						$s[] = "*/\r";
+						++$i;
+						$instr = false;
+					}
+					else if ("\n" == $f[$i]) $s[] = "\r";
+					else $s[] = $f[$i];
+				}
 				else if ('\\' == $f[$i])
 				{
 					++$i;
@@ -251,11 +265,19 @@ class jsqueez
 				{
 					++$i;
 					$instr = '*';
+
+					if ('!' == $f[$i+1])
+					{
+						++$i;
+						// no break here
+					}
+					else break;
 				}
 				else if ('/' == $f[$i+1])
 				{
 					++$i;
 					$instr = '//';
+					break;
 				}
 				else
 				{
@@ -274,18 +296,19 @@ class jsqueez
 						$s =& $strings[$key];
 					}
 					else $code[++$j] = '/';
-				}
 
-				break;
+					break;
+				}
 
 			case "'":
 			case '"':
 				$instr = $f[$i];
-				$key = "//''\"\"" . $K++ . "'";
+				$key = "//''\"\"" . $K++ . ('!' == $instr ? '!' : "'");
 				$code[++$j] = $key;
 				isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
 				$strings[$key] = array();
 				$s =& $strings[$key];
+				'!' == $instr && $s[] = "\r/*";
 
 				break;
 
