@@ -48,6 +48,10 @@
 * - Treats three semi-colons ;;; like single-line comments
 *   (http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
 *
+* TODO?
+* - foo['bar'] => foo.bar
+* - {'foo':'bar'} => {foo:'bar'}
+* - Dead code removal (never used function)
 */
 
 class jsqueez
@@ -354,6 +358,8 @@ class jsqueez
 		false !== strpos($code, 'new Object') && $code = preg_replace("'new Object(?:\(\)|([;\])},:]))'", '{}$1', $code);
 
 		// Add missing semi-colons after curly braces
+		// This adds more semi-colons than strictly needed,
+		// but it seems than later gzipping is favorable to the repetition of "};"
 		$code = preg_replace("'\}(?![:,;.()\]}]|(else|catch|finally|while)[^\$.a-zA-Z0-9_])'", '};', $code);
 
 		// Tag possible empty instruction for easy detection
@@ -437,7 +443,7 @@ class jsqueez
 		$cc_on && $f = str_replace('@#3', "\n", $f);
 
 		// Fix "else ;" empty instructions
-		$f = preg_replace("'(?<![\$.a-zA-Z0-9_])else\n'", 'else;', $f);
+		$f = preg_replace("'(?<![\$.a-zA-Z0-9_])else\n'", "\n", $f);
 
 		if (false !== strpos($f, 'throw'))
 		{
@@ -711,12 +717,12 @@ class jsqueez
 
 				$v = chr($k);
 
-				if ((64 < $k && $k < 91) || (96 < $k && $k < 123))
+				if ((64 < $k && $k < 91) || (96 < $k && $k < 123)) // A-Z a-z
 				{
 					$this->str0 .= $v;
 					$this->str1 .= $v;
 				}
-				else if (47 < $k && $k < 58)
+				else if (47 < $k && $k < 58) // 0-9
 				{
 					$this->str1 .= $v;
 				}
