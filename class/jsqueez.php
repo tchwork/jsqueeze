@@ -475,7 +475,7 @@ class jsqueez
 		foreach ($strings as $r1 => &$r2)
 		{
 			$r2 = "/'" == substr($r1, -2)
-				? strtr($r2, array("\\'" => "'", '\\"' => '"'))
+				? str_replace(array("\\'", '\\"'), array("'", '"'), $r2)
 				: str_replace('\\' . $q[1], $q[1], $r2);
 		}
 
