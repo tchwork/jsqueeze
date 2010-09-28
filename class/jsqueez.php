@@ -174,7 +174,8 @@ class jsqueez
 			$f = str_replace('@*/', '@#1', $f);
 		}
 
-		$code = array();
+		$len = strlen($f);
+		$code = str_repeat(' ', $len);
 		$j = 0;
 
 		$strings = array();
@@ -189,7 +190,6 @@ class jsqueez
 		);
 
 		// Extract strings, removes comments
-		$len = strlen($f);
 		for ($i = 0; $i < $len; ++$i)
 		{
 			if ($instr)
@@ -290,11 +290,13 @@ class jsqueez
 						|| (false !== strpos('oenfd', $a)
 						&& preg_match(
 							"'(?<![\$.a-zA-Z0-9_])(do|else|return|typeof|yield) ?$'",
-							implode('', array_slice($code, -8))
+							substr($code, $j-7, 8)
 						)))
 					{
 						$key = "//''\"\"" . $K++ . $instr = "/'";
-						$code[++$j] = $key;
+						$a = $j;
+						$code .= $key;
+						while (isset($key[++$j-$a-1])) $code[$j] = $key[$j-$a-1]; --$j;
 						isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
 						$strings[$key] = array('/');
 						$s =& $strings[$key];
@@ -308,7 +310,9 @@ class jsqueez
 			case '"':
 				$instr = $f[$i];
 				$key = "//''\"\"" . $K++ . ('!' == $instr ? '!' : "'");
-				$code[++$j] = $key;
+				$a = $j;
+				$code .= $key;
+				while (isset($key[++$j-$a-1])) $code[$j] = $key[$j-$a-1]; --$j;
 				isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
 				$strings[$key] = array();
 				$s =& $strings[$key];
@@ -319,13 +323,13 @@ class jsqueez
 			case "\n":
 				if ($j > 5)
 				{
-					' ' == $code[$j] && --$j && array_pop($code);
+					' ' == $code[$j] && --$j;
 
 					$code[++$j] =
 						false !== strpos('kend', $code[$j-1])
 							&& preg_match(
 								"'(?<![\$.a-zA-Z0-9_])(break|continue|return|yield)$'",
-								implode('', array_slice($code, -9))
+								substr($code, $j-8, 9)
 							)
 						? ';' : ' ';
 
@@ -344,7 +348,7 @@ class jsqueez
 		isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
 		unset($s);
 
-		$code = implode('', $code);
+		$code = substr($code, 0, $j+1);
 		$cc_on && $this->restoreCc($code, false);
 
 		// Protect wanted spaces and remove unwanted ones
