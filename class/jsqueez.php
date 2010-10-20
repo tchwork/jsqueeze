@@ -607,7 +607,7 @@ class jsqueez
 
 		if ($this->specialVarRx && preg_match_all("#//''\"\"[0-9]+'#", $closure, $w)) foreach ($w[0] as $a)
 		{
-			$v = preg_split("#([.,{]?(?<![a-zA-Z0-9_\$]){$this->specialVarRx}:?)#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
+			$v = preg_split("#([.,{]?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?)#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
 			$a = count($v);
 			for ($i = 0; $i < $a; ++$i)
 			{
@@ -782,7 +782,7 @@ class jsqueez
 		$this->local_tree =& $tree['local'];
 		$this->used_tree  =& $tree['used'];
 
-		$tree['code'] = preg_replace_callback("#[.,{]?(?<![a-zA-Z0-9_\$]){$this->varRx}:?#", array(&$this, 'getNewName'), $tree['code']);
+		$tree['code'] = preg_replace_callback("#[.,{]?(?<![a-zA-Z0-9_\$@]){$this->varRx}:?#", array(&$this, 'getNewName'), $tree['code']);
 		$this->specialVarRx && $tree['code'] = preg_replace_callback("#//''\"\"[0-9]+'#", array(&$this, 'renameInString'), $tree['code']);
 
 		foreach ($tree['childs'] as $a => &$b)
@@ -799,7 +799,7 @@ class jsqueez
 		unset($this->strings[$a[0]]);
 
 		return preg_replace_callback(
-			"#[.,{]?(?<![a-zA-Z0-9_\$]){$this->specialVarRx}:?#",
+			"#[.,{]?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?#",
 			array(&$this, 'getNewName'),
 			$b
 		);
