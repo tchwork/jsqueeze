@@ -52,6 +52,7 @@
 * - foo['bar'] => foo.bar
 * - {'foo':'bar'} => {foo:'bar'}
 * - Dead code removal (never used function)
+* - munge primitives: var TRUE=true, WINDOW=window, etc.
 */
 
 class jsqueez
