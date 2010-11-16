@@ -286,8 +286,8 @@ class jsqueez
 				}
 				else
 				{
-					$a = ' ' == $code[$j] ? $code[$j-1] : $code[$j];
-					if (false !== strpos('-!%&;<=>~:^+|,(*?[{', $a)
+					$a = $j && ' ' == $code[$j] ? $code[$j-1] : $code[$j];
+					if (false !== strpos('-!%&;<=>~:^+|,(*?[{ ', $a)
 						|| (false !== strpos('oenfd', $a)
 						&& preg_match(
 							"'(?<![\$.a-zA-Z0-9_])(do|else|return|typeof|yield) ?$'",
