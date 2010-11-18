@@ -170,8 +170,8 @@ class jsqueez
 		{
 			// Protect conditional comments from being removed
 			$f = str_replace('#', '##', $f);
-			$f = preg_replace("'/\*@cc_on(?![\$.a-zA-Z0-9_])'", '1#@cc_on', $f);
-			$f = preg_replace( "'//@cc_on(?![\$.a-zA-Z0-9_])([^\n]+)'", '2#@cc_on$1@#3', $f);
+			$f = str_replace('/*@', '1#@', $f);
+			$f = preg_replace("'//@([^\n]+)'", '2#@$1@#3', $f);
 			$f = str_replace('@*/', '@#1', $f);
 		}
 
@@ -877,8 +877,8 @@ class jsqueez
 		$lf && $s = str_replace('@#3', '', $s);
 
 		$s = str_replace('@#1', '@*/', $s);
-		$s = str_replace('2#@cc_on', '//@cc_on', $s);
-		$s = str_replace('1#@cc_on', '/*@cc_on', $s);
+		$s = str_replace('2#@', '//@', $s);
+		$s = str_replace('1#@', '/*@', $s);
 		$s = str_replace('##', '#', $s);
 	}
 }
