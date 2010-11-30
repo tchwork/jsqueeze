@@ -492,6 +492,8 @@ class jsqueez
 
 	function extractClosures($code)
 	{
+		$this->argFreq = array();
+
 		$code = ';' . $code;
 
 		$f = preg_split("'(?<![a-zA-Z0-9_\$])(function[ (].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
@@ -504,7 +506,7 @@ class jsqueez
 			$j = 0;
 			$l = strlen($f[$i]);
 
-			while ($c && $j<$l)
+			while ($c && $j < $l)
 			{
 				$s = $f[$i][$j++];
 				$c += '{' == $s ? 1 : ('}' == $s ? -1 : 0);
@@ -512,8 +514,17 @@ class jsqueez
 
 			$key = "//''\"\"#$i'";
 			$bracket = strpos($f[$i-1], '(', 8);
-			$closures[$key] = substr($f[$i-1], $bracket) . substr($f[$i], 0, $j);
+			$code = substr($f[$i-1], $bracket);
+			$closures[$key] = $code . substr($f[$i], 0, $j);
 			$f[$i-2] .= substr($f[$i-1], 0, $bracket) . $key . substr($f[$i], $j);
+
+			if ('(){' !== $code)
+			{
+				$j = substr_count($code, ',');
+				do isset($this->argFreq[$j]) ? ++$this->argFreq[$j] : $this->argFreq[$j] = 1;
+				while ($j--);
+			}
+
 			$i -= 2;
 		}
 
@@ -536,8 +547,9 @@ class jsqueez
 
 		if (preg_match("'\((.*?)\)'", $closure, $v) && '' !== $v[1])
 		{
+			$i = 0;
 			$v = explode(',', $v[1]);
-			foreach ($v as $w) $vars[$w] = 0;
+			foreach ($v as $w) $vars[$w] = $this->argFreq[$i++] - 1;
 		}
 
 		$v = preg_split("'(?<![\$.a-zA-Z0-9_])var '", $closure);
