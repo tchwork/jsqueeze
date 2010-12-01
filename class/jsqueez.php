@@ -317,7 +317,7 @@ class jsqueez
 				isset($s) && ($s = implode('', $s)) && $cc_on && $this->restoreCc($s);
 				$strings[$key] = array();
 				$s =& $strings[$key];
-				'!' == $instr && $s[] = "\r/*";
+				'!' == $instr && $s[] = "\r/*!";
 
 				break;
 
@@ -492,9 +492,46 @@ class jsqueez
 
 	function extractClosures($code)
 	{
-		$this->argFreq = array();
-
 		$code = ';' . $code;
+
+		$this->argFreq = array(-1 => substr_count($code, '}catch('));
+
+		if ($this->argFreq[-1])
+		{
+			$f = preg_split("@}catch\(({$this->varRx})@", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+			$code = 'catch$scope$var' . mt_rand();
+			$i = count($f) - 1;
+			$v = array();
+
+			while ($i)
+			{
+				$c = 1;
+				$j = 0;
+				$l = strlen($f[$i]);
+
+				while ($c && $j < $l)
+				{
+					$s = $f[$i][$j++];
+					$c += '(' == $s ? 1 : (')' == $s ? -1 : 0);
+				}
+
+				do
+				{
+					$s = $f[$i][$j++];
+					$c += '{' == $s ? 1 : ('}' == $s ? -1 : 0);
+				}
+				while ($c && $j < $l);
+
+				$c = preg_quote($f[$i-1], '#');
+				$f[$i] = preg_replace("#([.,{]?)(?<![a-zA-Z0-9_\$@]){$c}\\b#", '$1' . $code, $f[$i-1] . substr($f[$i], 0, $j)) . substr($f[$i], $j);
+
+				unset($f[--$i]);
+				--$i;
+			}
+
+			$code = implode('}catch(', $f);
+		}
 
 		$f = preg_split("'(?<![a-zA-Z0-9_\$])(function[ (].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 		$i = count($f) - 1;
@@ -589,14 +626,20 @@ class jsqueez
 			}
 
 			$v = explode(',', implode('', $w));
-			foreach ($v as $w) if (preg_match("'^{$this->varRx}'", $w, $v)) $vars[$v[0]] = 0;
+			foreach ($v as $w) if (preg_match("'^{$this->varRx}'", $w, $v)) isset($vars[$v[0]]) || $vars[$v[0]] = 0;
 		}
 
 		if (preg_match_all("@function ({$this->varRx})//''\"\"#@", $closure, $v))
 		{
-			foreach ($v[1] as $w) $vars[$w] = 0;
+			foreach ($v[1] as $w) isset($vars[$w]) || $vars[$w] = 0;
 		}
 
+		if ($this->argFreq[-1] && preg_match_all("@}catch\(({$this->varRx})@", $closure, $v))
+		{
+			$v[0] = array();
+			foreach ($v[1] as $w) isset($v[0][$w]) ? ++$v[0][$w] : $v[0][$w] = 1;
+			foreach ($v[0] as $w => $v) $vars[$w] = $this->argFreq[-1] - $v;
+		}
 
 		// Get all used vars, local and non-local
 
