@@ -38,6 +38,7 @@
 * - If you use with/eval then be careful.
 *
 * Bonus:
+* - Replaces false/true by !1/!0
 * - Replaces new Array/Object by []/{}
 * - Merges consecutive "var" declarations with commas
 * - Merges consecutive concatened strings
@@ -53,7 +54,7 @@
 * - foo['bar'] => foo.bar
 * - {'foo':'bar'} => {foo:'bar'}
 * - Dead code removal (never used function)
-* - munge primitives: var TRUE=true, WINDOW=window, etc.
+* - munge primitives: var WINDOW=window, etc.
 */
 
 class jsqueez
@@ -139,6 +140,7 @@ class jsqueez
 		$this->renameVars($tree[$key]);
 
 		$code = substr($tree[$key]['code'], 1);
+		$code = preg_replace("'\breturn !'", 'return!', $code);
 		$code = str_replace(array_keys($this->strings), array_values($this->strings), $code);
 
 		if ($singleLine) $code = strtr($code, "\n", ';');
@@ -763,7 +765,9 @@ class jsqueez
 			{
 				if ('.' == $k[0]) $k = substr($k, 1);
 
-				if (!$this->specialVarRx || !preg_match("#^{$this->specialVarRx}$#", $k))
+				if ('true' === $k) $this->charFreq[48] += $v;
+				else if ('false' === $k) $this->charFreq[49] += $v;
+				else if (!$this->specialVarRx || !preg_match("#^{$this->specialVarRx}$#", $k))
 				{
 					foreach (count_chars($k, 1) as $k => $w) $this->charFreq[$k] += $w * $v;
 				}
@@ -890,7 +894,7 @@ class jsqueez
 		}
 
 		$post = (isset($this->reserved[$m])
-			? $m
+			? ('true' === $m ? '!0' : ('false' === $m ? '!1': $m))
 			: (
 				  isset($this->local_tree[$m])
 				? $this->local_tree[$m]
