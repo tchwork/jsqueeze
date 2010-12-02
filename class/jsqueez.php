@@ -47,6 +47,7 @@
 * - Keep important comments marked with /*!...
 * - Treats three semi-colons ;;; like single-line comments
 *   (http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
+* - fix special catch scope across browsers
 *
 * TODO?
 * - foo['bar'] => foo.bar
@@ -498,11 +499,15 @@ class jsqueez
 
 		if ($this->argFreq[-1])
 		{
+			// Special catch scope handling
+
+			// FIXME: this implementation doesn't work with nested catch scopes who need
+			// access to their parent's catched variable (but this should be very rare).
+
 			$f = preg_split("@}catch\(({$this->varRx})@", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 
 			$code = 'catch$scope$var' . mt_rand();
 			$i = count($f) - 1;
-			$v = array();
 
 			while ($i)
 			{
@@ -516,7 +521,7 @@ class jsqueez
 					$c += '(' == $s ? 1 : (')' == $s ? -1 : 0);
 				}
 
-				do
+				if (!$c) do
 				{
 					$s = $f[$i][$j++];
 					$c += '{' == $s ? 1 : ('}' == $s ? -1 : 0);
@@ -524,13 +529,12 @@ class jsqueez
 				while ($c && $j < $l);
 
 				$c = preg_quote($f[$i-1], '#');
-				$f[$i] = preg_replace("#([.,{]?)(?<![a-zA-Z0-9_\$@]){$c}\\b#", '$1' . $code, $f[$i-1] . substr($f[$i], 0, $j)) . substr($f[$i], $j);
+				$f[$i-2] .= '}catch(' . preg_replace("#([.,{]?)(?<![a-zA-Z0-9_\$@]){$c}\\b#", '$1' . $code, $f[$i-1] . substr($f[$i], 0, $j)) . substr($f[$i], $j);
 
-				unset($f[--$i]);
-				--$i;
+				unset($f[$i--], $f[$i--]);
 			}
 
-			$code = implode('}catch(', $f);
+			$code = $f[0];
 		}
 
 		$f = preg_split("'(?<![a-zA-Z0-9_\$])(function[ (].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
@@ -549,11 +553,11 @@ class jsqueez
 				$c += '{' == $s ? 1 : ('}' == $s ? -1 : 0);
 			}
 
-			$key = "//''\"\"#$i'";
-			$bracket = strpos($f[$i-1], '(', 8);
-			$code = substr($f[$i-1], $bracket);
-			$closures[$key] = $code . substr($f[$i], 0, $j);
-			$f[$i-2] .= substr($f[$i-1], 0, $bracket) . $key . substr($f[$i], $j);
+			$l = "//''\"\"#$i'";
+			$c = strpos($f[$i-1], '(', 8);
+			$code = substr($f[$i-1], $c);
+			$closures[$l] = $code . substr($f[$i], 0, $j);
+			$f[$i-2] .= substr($f[$i-1], 0, $c) . $l . substr($f[$i], $j);
 
 			if ('(){' !== $code)
 			{
