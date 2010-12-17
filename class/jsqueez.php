@@ -34,7 +34,7 @@
 * Notes:
 * - In order to maximise later HTTP compression (deflate, gzip),
 *   new variables names are choosen by considering closures,
-*   variables frequency and single characters frequency.
+*   variables' frequency and characters' frequency.
 * - If you use with/eval then be careful.
 *
 * Bonus:
@@ -509,6 +509,7 @@ class jsqueez
 			$f = preg_split("@}catch\(({$this->varRx})@", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 
 			$code = 'catch$scope$var' . mt_rand();
+			$this->specialVarRx = $this->specialVarRx ? '(?:' . $this->specialVarRx . '|' . preg_quote($code) . ')' : preg_quote($code);
 			$i = count($f) - 1;
 
 			while ($i)
@@ -588,11 +589,11 @@ class jsqueez
 		$tree['local'] = array();
 		$vars =& $tree['local'];
 
-		if (preg_match("'\((.*?)\)'", $closure, $v) && '' !== $v[1])
+		if (preg_match("'^\((.*?)\)\{'", $closure, $v) && '' !== $v[1])
 		{
 			$i = 0;
 			$v = explode(',', $v[1]);
-			foreach ($v as $w) $vars[$w] = $this->argFreq[$i++] - 1;
+			foreach ($v as $w) $vars[$w] = $this->argFreq[$i++] - 1; // Give a bonus to argument variables
 		}
 
 		$v = preg_split("'(?<![\$.a-zA-Z0-9_])var '", $closure);
