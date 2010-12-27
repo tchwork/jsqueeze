@@ -1,6 +1,6 @@
 <?php /*********************************************************************
  *
- *   Copyright : (C) 2006 Nicolas Grekas. All rights reserved.
+ *   Copyright : (C) 2010 Nicolas Grekas. All rights reserved.
  *   Email     : p@tchwork.org
  *   License   : http://www.gnu.org/licenses/lgpl.txt GNU/LGPL
  *
@@ -32,6 +32,7 @@
 * - Output is optimized for later HTTP compression.
 *
 * Notes:
+* - Source code must be parse error free before processing.
 * - In order to maximise later HTTP compression (deflate, gzip),
 *   new variables names are choosen by considering closures,
 *   variables' frequency and characters' frequency.
@@ -504,7 +505,7 @@ class jsqueez
 			// Special catch scope handling
 
 			// FIXME: this implementation doesn't work with nested catch scopes who need
-			// access to their parent's catched variable (but this should be very rare).
+			// access to their parent's catched variable (but who needs that?).
 
 			$f = preg_split("@}catch\(({$this->varRx})@", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 
