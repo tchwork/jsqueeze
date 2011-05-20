@@ -475,6 +475,7 @@ class jsqueez
         $f = preg_replace("'(?<!(?<![a-zA-Z0-9_\$])do)(?<!(?<![a-zA-Z0-9_\$])else) if\('", "\nif(", $f);
         $f = preg_replace("'(?<=--|\+\+)(?<![a-zA-Z0-9_\$])(" . implode('|', $r1) . ")(?![a-zA-Z0-9_\$])'", "\n$1", $f);
         $f = preg_replace("'(?<![a-zA-Z0-9_\$])for\neach\('", 'for each(', $f);
+        $f = preg_replace("'(?<![a-zA-Z0-9_\$])\n(" . implode('|', $r2) . ")(?![a-zA-Z0-9_\$])'", '$1', $f);
 
         // Merge strings
         if ($q["'"] > $q['"']) $q = array($q[1], $q[0]);
