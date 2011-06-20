@@ -58,7 +58,7 @@
 * - munge primitives: var WINDOW=window, etc.
 */
 
-class jsqueez
+class JSqueeze
 {
     /**
      * Class constructor
@@ -77,7 +77,7 @@ class jsqueez
      *
      */
 
-    var $specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
+    protected $specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
 
     function __construct($specialVarRx = false)
     {
@@ -88,12 +88,6 @@ class jsqueez
         $this->counter = 0;
     }
 
-    function jsqueez($specialVarRx = false)
-    {
-        $this->__construct($specialVarRx);
-    }
-
-
     /**
      * Does the job.
      *
@@ -101,7 +95,7 @@ class jsqueez
      * semi-colons to be replaced by line feeds.
      *
      * Example:
-     * $parser = new jsqueez;
+     * $parser = new JSqueeze;
      * $squeezed_js = $parser->squeeze($fat_js);
      */
 
