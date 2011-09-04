@@ -500,7 +500,7 @@ class JSqueeze
             // Special catch scope handling
 
             // FIXME: this implementation doesn't work with nested catch scopes who need
-            // access to their parent's catched variable (but who needs that?).
+            // access to their parent's caught variable (but who needs that?).
 
             $f = preg_split("@}catch\(({$this->varRx})@", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
 
