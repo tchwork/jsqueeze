@@ -552,8 +552,14 @@ class JSqueeze
                 $c += '{' == $s ? 1 : ('}' == $s ? -1 : 0);
             }
 
+            switch (substr($f[$i-2], -1))
+            {
+            default: if (1 !== $c = 1 + strpos($f[$i-1], ' ', 8)) break;
+            case "\n": case ';': case '{': case '}': case ')': case ']':
+                $c = strpos($f[$i-1], '(', 8);
+            }
+
             $l = "//''\"\"#$i'";
-            $c = strpos($f[$i-1], '(', 8);
             $code = substr($f[$i-1], $c);
             $closures[$l] = $code . substr($f[$i], 0, $j);
             $f[$i-2] .= substr($f[$i-1], 0, $c) . $l . substr($f[$i], $j);
@@ -585,11 +591,16 @@ class JSqueeze
         $tree['local'] = array();
         $vars =& $tree['local'];
 
-        if (preg_match("'^\((.*?)\)\{'", $closure, $v) && '' !== $v[1])
+        if (preg_match("'^([^(]*)\((.*?)\)\{'", $closure, $v))
         {
-            $i = 0;
-            $v = explode(',', $v[1]);
-            foreach ($v as $w) $vars[$w] = $this->argFreq[$i++] - 1; // Give a bonus to argument variables
+            if ($v[1]) $vars[$v[1]] = 0;
+
+            if ($v[2])
+            {
+                $i = 0;
+                $v = explode(',', $v[2]);
+                foreach ($v as $w) $vars[$w] = $this->argFreq[$i++] - 1; // Give a bonus to argument variables
+            }
         }
 
         $v = preg_split("'(?<![\$.a-zA-Z0-9_])var '", $closure);
