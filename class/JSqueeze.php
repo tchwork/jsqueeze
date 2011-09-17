@@ -156,7 +156,7 @@ class JSqueeze
         'long','native','new','null','package','private','protected','public',
         'return','short','static','super','switch','synchronized','this',
         'throw','throws','transient','true','try','typeof','var','void',
-        'while','with','yield','let',
+        'while','with','yield','let','interface',
     );
 
 
