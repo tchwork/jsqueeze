@@ -77,7 +77,21 @@ class JSqueeze
      *
      */
 
-    protected $specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
+    protected
+
+    $specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*',
+    $varRx = '(?:[a-zA-Z_$])[a-zA-Z0-9_$]*',
+    $reserved = array(
+        'abstract','as','boolean','break','byte','case','catch','char','class',
+        'const','continue','debugger','default','delete','do','double','else',
+        'enum','export','extends','false','final','finally','float','for',
+        'function','goto','if','implements','import','in','instanceof','int',
+        'long','native','new','null','package','private','protected','public',
+        'return','short','static','super','switch','synchronized','this',
+        'throw','throws','transient','true','try','typeof','var','void',
+        'while','with','yield','let','interface',
+    );
+
 
     function __construct($specialVarRx = false)
     {
@@ -132,7 +146,7 @@ class JSqueeze
 
         $tree = array($key => array('parent' => false));
         $this->makeVars($code, $tree[$key]);
-        $this->renameVars($tree[$key]);
+        $this->renameVars($tree[$key], true);
 
         $code = substr($tree[$key]['code'], 1);
         $code = preg_replace("'\breturn !'", 'return!', $code);
@@ -145,24 +159,7 @@ class JSqueeze
     }
 
 
-    // Protected properties
-
-    var $varRx = '(?:[a-zA-Z_$])[a-zA-Z0-9_$]*';
-    var $reserved = array(
-        'abstract','as','boolean','break','byte','case','catch','char','class',
-        'const','continue','debugger','default','delete','do','double','else',
-        'enum','export','extends','false','final','finally','float','for',
-        'function','goto','if','implements','import','in','instanceof','int',
-        'long','native','new','null','package','private','protected','public',
-        'return','short','static','super','switch','synchronized','this',
-        'throw','throws','transient','true','try','typeof','var','void',
-        'while','with','yield','let','interface',
-    );
-
-
-    // Protected methods
-
-    function extractStrings($f)
+    protected function extractStrings($f)
     {
         if ($cc_on = false !== strpos($f, '@cc_on'))
         {
@@ -362,7 +359,7 @@ class JSqueeze
 
         // Add missing semi-colons after curly braces
         // This adds more semi-colons than strictly needed,
-        // but it seems than later gzipping is favorable to the repetition of "};"
+        // but it seems that later gzipping is favorable to the repetition of "};"
         $code = preg_replace("'\}(?![:,;.()\]}]|(else|catch|finally|while)[^\$.a-zA-Z0-9_])'", '};', $code);
 
         // Tag possible empty instruction for easy detection
@@ -489,7 +486,7 @@ class JSqueeze
         return array($f, $strings);
     }
 
-    function extractClosures($code)
+    protected function extractClosures($code)
     {
         $code = ';' . $code;
 
@@ -577,18 +574,17 @@ class JSqueeze
         return array($f[0], $closures);
     }
 
-    function makeVars($closure, &$tree)
+    protected function makeVars($closure, &$tree)
     {
         $tree['code'] =& $closure;
-
+        $tree['used'] = array();
+        $tree['local'] = array();
 
         // Replace multiple "var" declarations by a single one
         $closure = preg_replace_callback("'(?<=[\n\{\}])var [^\n\{\}]+(?:\nvar [^\n\{\}]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
 
-
         // Get all local vars (functions, arguments and "var" prefixed)
 
-        $tree['local'] = array();
         $vars =& $tree['local'];
 
         if (preg_match("'^([^(]*)\((.*?)\)\{'", $closure, $v))
@@ -657,7 +653,6 @@ class JSqueeze
 
         // Get all used vars, local and non-local
 
-        $tree['used'] = array();
         $vars =& $tree['used'];
 
         if (preg_match_all("#([.,{]?)(?<![a-zA-Z0-9_\$])({$this->varRx})(:?)#", $closure, $w, PREG_SET_ORDER))
@@ -705,7 +700,6 @@ class JSqueeze
             }
         }
 
-
         // Propagate the usage number to parents
 
         foreach ($vars as $w => $a)
@@ -739,7 +733,6 @@ class JSqueeze
             }
         }
 
-
         // Analyse childs
 
         $tree['childs'] = array();
@@ -755,16 +748,16 @@ class JSqueeze
         }
     }
 
-    function mergeVarDeclarations($m)
+    protected function mergeVarDeclarations($m)
     {
         return str_replace("\nvar ", ',', $m[0]);
     }
 
-    function renameVars(&$tree, $base = true)
+    protected function renameVars(&$tree, $root)
     {
         $this->counter = -1;
 
-        if ($base)
+        if ($root)
         {
             $tree['local'] += $tree['used'];
             $tree['used'] = array();
@@ -810,19 +803,19 @@ class JSqueeze
                 $this->str1 = $this->str0 . '0123456789';
             }
 
-            foreach (array_keys($tree['local']) as $var)
+            foreach ($tree['local'] as $var => $root)
             {
                 if ('.' != substr($var, 0, 1) && isset($tree['local'][".{$var}"])) $tree['local'][$var] += $tree['local'][".{$var}"];
             }
 
-            foreach (array_keys($tree['local']) as $var)
+            foreach ($tree['local'] as $var => $root)
             {
                 if ('.' == substr($var, 0, 1) && isset($tree['local'][substr($var, 1)])) $tree['local'][$var] = $tree['local'][substr($var, 1)];
             }
 
             arsort($tree['local']);
 
-            foreach (array_keys($tree['local']) as $var) switch (substr($var, 0, 1))
+            foreach ($tree['local'] as $var => $root) switch (substr($var, 0, 1))
             {
             case '.':
                 if (!isset($tree['local'][substr($var, 1)]))
@@ -834,18 +827,18 @@ class JSqueeze
             case '#': break;
 
             default:
-                $base = $this->specialVarRx && 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? $this->getNextName($tree['used']) . '$' : $var;
-                $tree['local'][$var] = $base;
-                if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $base;
+                $root = $this->specialVarRx && 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? $this->getNextName($tree['used']) . '$' : $var;
+                $tree['local'][$var] = $root;
+                if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $root;
             }
 
-            foreach (array_keys($tree['local']) as $var) $tree['local'][$var] = preg_replace("'^#'", '.', $tree['local'][$var]);
+            foreach ($tree['local'] as $var => $root) $tree['local'][$var] = preg_replace("'^#'", '.', $tree['local'][$var]);
         }
         else
         {
             arsort($tree['local']);
 
-            foreach (array_keys($tree['local']) as $var)
+            foreach ($tree['local'] as $var => $root)
             {
                 $tree['local'][$var] = $this->getNextName($tree['used']);
             }
@@ -865,7 +858,7 @@ class JSqueeze
         }
     }
 
-    function renameInString($a)
+    protected function renameInString($a)
     {
         $b =& $this->strings[$a[0]];
         unset($this->strings[$a[0]]);
@@ -877,7 +870,7 @@ class JSqueeze
         );
     }
 
-    function getNewName($m)
+    protected function getNewName($m)
     {
         $m = $m[0];
 
@@ -917,16 +910,11 @@ class JSqueeze
         return $pre . ('.' === $post[0] ? substr($post, 1) : $post);
     }
 
-    function getNextName(&$exclude = array(), $recursive = false)
+    protected function getNextName($exclude = array(), $recursive = false)
     {
         ++$this->counter;
 
-        if (!$recursive)
-        {
-            $recursive = $exclude;
-            $exclude =& $recursive;
-            $exclude = array_flip($exclude);
-        }
+        $recursive || $exclude = array_flip($exclude);
 
         $len0 = strlen($this->str0);
         $len1 = strlen($this->str0);
@@ -943,7 +931,7 @@ class JSqueeze
         return !(isset($this->reserved[$name]) || isset($exclude[$name])) ? $name : $this->getNextName($exclude, true);
     }
 
-    function restoreCc(&$s, $lf = true)
+    protected function restoreCc(&$s, $lf = true)
     {
         $lf && $s = str_replace('@#3', '', $s);
 
