@@ -49,13 +49,14 @@
 * - Keep important comments marked with /*!...
 * - Treats three semi-colons ;;; like single-line comments
 *   (http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
-* - fix special catch scope across browsers
+* - Fix special catch scope across browsers
+* - Work around buggy-handling of named function expressions in IE<=8
 *
 * TODO?
 * - foo['bar'] => foo.bar
 * - {'foo':'bar'} => {foo:'bar'}
 * - Dead code removal (never used function)
-* - munge primitives: var WINDOW=window, etc.
+* - Munge primitives: var WINDOW=window, etc.
 */
 
 class JSqueeze
@@ -99,7 +100,6 @@ class JSqueeze
         $this->reserved = array_flip($this->reserved);
         $this->data = array();
         $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
-        $this->counter = 0;
     }
 
     /**
@@ -145,7 +145,7 @@ class JSqueeze
         $this->closures[$key] =& $code;
 
         $tree = array($key => array('parent' => false));
-        $this->makeVars($code, $tree[$key]);
+        $this->makeVars($code, $tree[$key], $key);
         $this->renameVars($tree[$key], true);
 
         $code = substr($tree[$key]['code'], 1);
@@ -574,7 +574,7 @@ class JSqueeze
         return array($f[0], $closures);
     }
 
-    protected function makeVars($closure, &$tree)
+    protected function makeVars($closure, &$tree, $key)
     {
         $tree['code'] =& $closure;
         $tree['nfe'] = false;
@@ -590,7 +590,11 @@ class JSqueeze
 
         if (preg_match("'^( [^(]*)?\((.*?)\)\{'", $closure, $v))
         {
-            if ($v[1]) $vars[$tree['nfe'] = substr($v[1], 1)] = 0;
+            if ($v[1])
+            {
+                $vars[$tree['nfe'] = substr($v[1], 1)] = -1;
+                $tree['parent']['local'][';' . $key] =& $vars[$tree['nfe']];
+            }
 
             if ($v[2])
             {
@@ -744,7 +748,7 @@ class JSqueeze
             foreach ($w[0] as $a)
             {
                 $vars[$a] = array('parent' => &$tree);
-                $this->makeVars($this->closures[$a], $vars[$a]);
+                $this->makeVars($this->closures[$a], $vars[$a], $a);
             }
         }
     }
@@ -756,8 +760,6 @@ class JSqueeze
 
     protected function renameVars(&$tree, $root)
     {
-        $this->counter = -1;
-
         if ($root)
         {
             $tree['local'] += $tree['used'];
@@ -821,28 +823,29 @@ class JSqueeze
             case '.':
                 if (!isset($tree['local'][substr($var, 1)]))
                 {
-                    $tree['local'][$var] = '#' . ($this->specialVarRx && 3 < strlen($var) && preg_match("'^\.{$this->specialVarRx}$'", $var) ? $this->getNextName($tree['used']) . '$' : substr($var, 1));
+                    $tree['local'][$var] = '#' . ($this->specialVarRx && 3 < strlen($var) && preg_match("'^\.{$this->specialVarRx}$'", $var) ? $this->getNextName($tree) . '$' : substr($var, 1));
                 }
                 break;
 
+            case ';': $tree['local'][$var] = 0 === $root ? '' : $this->getNextName($tree);
             case '#': break;
 
             default:
-                $root = $this->specialVarRx && 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? $this->getNextName($tree['used']) . '$' : $var;
+                $root = $this->specialVarRx && 2 < strlen($var) && preg_match("'^{$this->specialVarRx}$'", $var) ? $this->getNextName($tree) . '$' : $var;
                 $tree['local'][$var] = $root;
                 if (isset($tree['local'][".{$var}"])) $tree['local'][".{$var}"] = '#' . $root;
             }
 
             foreach ($tree['local'] as $var => $root) $tree['local'][$var] = preg_replace("'^#'", '.', $tree['local'][$var]);
+
         }
         else
         {
             arsort($tree['local']);
 
             foreach ($tree['local'] as $var => $root)
-            {
-                $tree['local'][$var] = $tree['nfe'] === $var && 1 === $root ? '' : $this->getNextName($tree['used']);
-            }
+                if ($tree['nfe'] !== $var)
+                    $tree['local'][$var] = 0 === $root ? '' : $this->getNextName($tree);
         }
 
         $this->local_tree =& $tree['local'];
@@ -913,25 +916,31 @@ class JSqueeze
         return $pre . ('.' === $post[0] ? substr($post, 1) : $post);
     }
 
-    protected function getNextName($exclude = array(), $recursive = false)
+    protected function getNextName(&$tree = array(), &$counter = false)
     {
-        ++$this->counter;
+        if (false === $counter)
+        {
+            $counter =& $tree['counter'];
+            isset($counter) || $counter = -1;
+            $exclude = array_flip($tree['used']);
+        }
+        else $exclude = $tree;
 
-        $recursive || $exclude = array_flip($exclude);
+        ++$counter;
 
         $len0 = strlen($this->str0);
         $len1 = strlen($this->str0);
 
-        $name = $this->str0[$this->counter % $len0];
+        $name = $this->str0[$counter % $len0];
 
-        $i = intval($this->counter / $len0) - 1;
+        $i = intval($counter / $len0) - 1;
         while ($i>=0)
         {
             $name .= $this->str1[ $i % $len1 ];
             $i = intval($i / $len1) - 1;
         }
 
-        return !(isset($this->reserved[$name]) || isset($exclude[$name])) ? $name : $this->getNextName($exclude, true);
+        return !(isset($this->reserved[$name]) || isset($exclude[$name])) ? $name : $this->getNextName($exclude, $counter);
     }
 
     protected function restoreCc(&$s, $lf = true)
