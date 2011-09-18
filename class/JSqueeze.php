@@ -551,7 +551,7 @@ class JSqueeze
 
             switch (substr($f[$i-2], -1))
             {
-            default: if (1 !== $c = 1 + strpos($f[$i-1], ' ', 8)) break;
+            default: if (false !== $c = strpos($f[$i-1], ' ', 8)) break;
             case "\n": case ';': case '{': case '}': case ')': case ']':
                 $c = strpos($f[$i-1], '(', 8);
             }
@@ -577,6 +577,7 @@ class JSqueeze
     protected function makeVars($closure, &$tree)
     {
         $tree['code'] =& $closure;
+        $tree['nfe'] = false;
         $tree['used'] = array();
         $tree['local'] = array();
 
@@ -587,9 +588,9 @@ class JSqueeze
 
         $vars =& $tree['local'];
 
-        if (preg_match("'^([^(]*)\((.*?)\)\{'", $closure, $v))
+        if (preg_match("'^( [^(]*)?\((.*?)\)\{'", $closure, $v))
         {
-            if ($v[1]) $vars[$v[1]] = 0;
+            if ($v[1]) $vars[$tree['nfe'] = substr($v[1], 1)] = 0;
 
             if ($v[2])
             {
@@ -840,14 +841,14 @@ class JSqueeze
 
             foreach ($tree['local'] as $var => $root)
             {
-                $tree['local'][$var] = $this->getNextName($tree['used']);
+                $tree['local'][$var] = $tree['nfe'] === $var && 1 === $root ? '' : $this->getNextName($tree['used']);
             }
         }
 
         $this->local_tree =& $tree['local'];
         $this->used_tree  =& $tree['used'];
 
-        $tree['code'] = preg_replace_callback("#[.,{]?(?<![a-zA-Z0-9_\$@]){$this->varRx}:?#", array(&$this, 'getNewName'), $tree['code']);
+        $tree['code'] = preg_replace_callback("#[.,{ ]?(?<![a-zA-Z0-9_\$@]){$this->varRx}:?#", array(&$this, 'getNewName'), $tree['code']);
         $this->specialVarRx && $tree['code'] = preg_replace_callback("#//''\"\"[0-9]+'#", array(&$this, 'renameInString'), $tree['code']);
 
         foreach ($tree['childs'] as $a => &$b)
@@ -877,7 +878,7 @@ class JSqueeze
         $pre = '.' === $m[0] ? '.' : '';
         $post = '';
 
-        if (',' === $m[0] || '{' === $m[0])
+        if (',' === $m[0] || '{' === $m[0] || ' ' === $m[0])
         {
             $pre = $m[0];
 
@@ -906,6 +907,8 @@ class JSqueeze
                 )
             )
         ) . $post;
+
+        if ('' === $post && ' ' === $pre) $pre = '';
 
         return $pre . ('.' === $post[0] ? substr($post, 1) : $post);
     }
