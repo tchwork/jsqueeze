@@ -911,9 +911,7 @@ class JSqueeze
             )
         ) . $post;
 
-        if ('' === $post && ' ' === $pre) $pre = '';
-
-        return $pre . ('.' === $post[0] ? substr($post, 1) : $post);
+        return '' === $post ? '' : ($pre . ('.' === $post[0] ? substr($post, 1) : $post));
     }
 
     protected function getNextName(&$tree = array(), &$counter = false)
