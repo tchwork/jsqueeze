@@ -552,7 +552,7 @@ class JSqueeze
             switch (substr($f[$i-2], -1))
             {
             default: if (false !== $c = strpos($f[$i-1], ' ', 8)) break;
-            case "\n": case ';': case '{': case '}': case ')': case ']':
+            case false: case "\n": case ';': case '{': case '}': case ')': case ']':
                 $c = strpos($f[$i-1], '(', 8);
             }
 
