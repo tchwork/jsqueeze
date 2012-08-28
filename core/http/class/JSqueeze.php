@@ -672,10 +672,13 @@ class JSqueeze
             }
         }
 
-        if ($this->specialVarRx && preg_match_all("#//''\"\"[0-9]+'#", $closure, $w)) foreach ($w[0] as $a)
+        if (preg_match_all("#//''\"\"[0-9]+(?:['!]|/')#", $closure, $w)) foreach ($w[0] as $a)
         {
-            $v = preg_split("#([.,{]?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?)#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE);
+            $v = "'" === substr($a, -1) && "/'" !== substr($a, -2) && $this->specialVarRx
+                ? preg_split("#([.,{]?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?)#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE)
+                : array($this->strings[$a]);
             $a = count($v);
+
             for ($i = 0; $i < $a; ++$i)
             {
                 $k = $v[$i];
@@ -799,7 +802,7 @@ class JSqueeze
 
             if ('' === $this->str0)
             {
-                $this->str0 = 'CLASPEMITDBFRUGNJVHOWKXQYZclaspemitdbfrugnjvhowkxqyz';
+                $this->str0 = 'claspemitdbfrugnjvhowkxqyzCLASPEMITDBFRUGNJVHOWKXQYZ';
                 $this->str1 = $this->str0 . '0123456789';
             }
 
