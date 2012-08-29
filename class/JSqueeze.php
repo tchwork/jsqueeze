@@ -95,7 +95,7 @@ class JSqueeze
     {
         $specialVarRx && $this->specialVarRx = $specialVarRx;
         $this->reserved = array_flip($this->reserved);
-        $this->data = array();
+        $this->argFreq = array(-1 => 0);
         $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
     }
 
@@ -151,6 +151,11 @@ class JSqueeze
 
         if ($singleLine) $code = strtr($code, "\n", ';');
         false !== strpos($code, "\r") && $code = strtr(trim($code), "\r", "\n");
+
+        // Cleanup memory
+        // $this->argFreq and $this->charFreq are kept so that frequency stats can be summed up
+        $this->string = $this->closures = array();
+        $this->str0 = $this->str1 = '';
 
         return $code;
     }
@@ -487,7 +492,7 @@ class JSqueeze
     {
         $code = ';' . $code;
 
-        $this->argFreq = array(-1 => substr_count($code, '}catch('));
+        $this->argFreq[-1] += substr_count($code, '}catch(');
 
         if ($this->argFreq[-1])
         {
