@@ -1,1 +1,1 @@
-function id(a){return a}
+;function id(n){;;᠎; ; ; ; ; ; ; ; ; ; ; ; ; ;　;return n};

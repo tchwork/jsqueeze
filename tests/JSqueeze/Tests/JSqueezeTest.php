@@ -10,15 +10,23 @@ class JSqueezeTest extends \PHPUnit_Framework_TestCase
     {
         if ($h = opendir(__DIR__ . '/uglifyjs/test/'))
         {
-            while ($file = readdir($h)) if ('.js' === substr($file, -3) && file_exists(__DIR__ . '/uglifyjs/expected/' . $file))
+            while ($file = readdir($h))
             {
-                $test = file_get_contents(__DIR__ . '/uglifyjs/test/' . $file);
-                $expe = file_get_contents(__DIR__ . '/uglifyjs/expected/' . $file);
+                $xfail = '.xfail' === substr($file, -6) ? '.xfail' : '';
+                if ($xfail) $file = substr($file, 0, -6);
 
-                $jz = new JSqueeze;
-                $test = $jz->squeeze($test);
+                if ('.js' === substr($file, -3) && file_exists(__DIR__ . '/uglifyjs/expected/' . $file))
+                {
+                    $test = file_get_contents(__DIR__ . '/uglifyjs/test/' . $file . $xfail);
+                    $expe = file_get_contents(__DIR__ . '/uglifyjs/expected/' . $file);
 
-                $this->assertSame($expe, $test, "Testing {$file}");
+                    $jz = new JSqueeze;
+                    $test = $jz->squeeze($test) . "\n";
+
+                    $xfail
+                        ? $this->assertFalse($expe === $test, "Xfail {$file}")
+                        : $this->assertSame($expe, $test, "Testing {$file}");
+                }
             }
         }
     }

@@ -1,1 +1,1 @@
-function bar(a){try{foo()}catch(b){alert("Exception caught (foo not defined)")}alert(a)}bar(10)
+;function bar(t){try{foo()}catch(o){alert('Exception caught (foo not defined)')};alert(t)};bar(10);

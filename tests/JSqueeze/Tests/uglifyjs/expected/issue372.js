@@ -1,1 +1,1 @@
-"use strict";function a(){function a(){function a(){void "c"}function b(){"salmon";void "d"}void "b"}function b(){"salmon";function a(){void "f";for(var a=0;a<10;a++)var b=function(){void "g"}()}void "e"}void "a"}
+'use strict';'use strict';function a(){void'a';function o(){'use strict';void'b';function o(){'use strict';void'c'};function i(){'salmon';void'd'}};function i(){'salmon';void'e';function i(){'use strict';'salmon';void'f';for(var i=0;i<10;i++)var o=function(){'use strict';'salmon';void'g'}()}}};

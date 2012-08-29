@@ -1,1 +1,1 @@
-var a=a+"a"+"b"+1+c,b=a+"c"+"ds"+123+c,c=a+"c"+123+d+"ds"+c
+;var a=a+'ab'+1+c,b=a+'cds'+123+c,c=a+'c'+123+d+'ds'+c;
