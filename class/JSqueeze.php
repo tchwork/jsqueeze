@@ -354,7 +354,7 @@ class JSqueeze
         $code = str_replace('+ +', "+\x7F+", $code);
         $code = preg_replace("'(\d)\s+\.\s*([a-zA-Z\$_[(])'", "$1\x7F.$2", $code);
         $code = preg_replace("# ([-!%&;<=>~:.^+|,()*?[\]{}/']+)#", '$1', $code);
-        $code = preg_replace( "#([-!%&;<=>~:.^+|,()*?[\]{}]+) #", '$1', $code);
+        $code = preg_replace( "#([-!%&;<=>~:.^+|,()*?[\]{}/]+) #", '$1', $code);
 
         // Replace new Array/Object by []/{}
         false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?:\(\)|([;\])},:]))'", '[]$1', $code);
