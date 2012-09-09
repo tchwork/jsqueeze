@@ -62,8 +62,17 @@ class JSqueeze
 
     SPECIAL_VAR_RX = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
 
+    public
+
+    $charFreq;
+
     protected
 
+    $strings,
+    $closures,
+    $str0,
+    $str1,
+    $argFreq,
     $specialVarRx,
     $keepImportantComments,
 
@@ -83,6 +92,7 @@ class JSqueeze
     function __construct()
     {
         $this->reserved = array_flip($this->reserved);
+        $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
     }
 
     /**
@@ -116,7 +126,6 @@ class JSqueeze
         if ('' === $code) return '';
 
         $this->argFreq = array(-1 => 0);
-        $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
         $this->specialVarRx = $specialVarRx;
         $this->keepImportantComments = !!$keepImportantComments;
 
@@ -159,8 +168,8 @@ class JSqueeze
         false !== strpos($code, "\r") && $code = strtr(trim($code), "\r", "\n");
 
         // Cleanup memory
-        $this->argFreq = $this->charFreq = array();
-        $this->string = $this->closures = array();
+        $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
+        $this->strings = $this->closures = $this->argFreq = array();
         $this->str0 = $this->str1 = '';
 
         return $code;
