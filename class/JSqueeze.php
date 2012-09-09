@@ -92,7 +92,7 @@ class JSqueeze
     function __construct()
     {
         $this->reserved = array_flip($this->reserved);
-        $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
+        $this->charFreq = array_fill(0, 256, 0);
     }
 
     /**
@@ -168,7 +168,7 @@ class JSqueeze
         false !== strpos($code, "\r") && $code = strtr(trim($code), "\r", "\n");
 
         // Cleanup memory
-        $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
+        $this->charFreq = array_fill(0, 256, 0);
         $this->strings = $this->closures = $this->argFreq = array();
         $this->str0 = $this->str1 = '';
 
