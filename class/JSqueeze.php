@@ -58,26 +58,15 @@
 
 class JSqueeze
 {
-    /**
-     * Class constructor
-     *
-     * $specialVarRx defines the regular expression of special variables names
-     * for global vars, methods, properties and in string substitution.
-     * Set it to false if you want the default.
-     *
-     * If the analysed javascript source contains a single line comment like
-     * this one, then the directive will overwrite $specialVarRx:
-     *
-     * // jsqueez.specialVarRx = your_specialVar_regexp_here
-     *
-     * Only the first directive is parsed, others are ignored. It is not possible
-     * to redefine $specialVarRx in the middle of the javascript source.
-     *
-     */
+    const
+
+    SPECIAL_VAR_RX = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
 
     protected
 
-    $specialVarRx = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*',
+    $specialVarRx,
+    $keepImportantComments,
+
     $varRx = '(?:[a-zA-Z_$])[a-zA-Z0-9_$]*',
     $reserved = array(
         'abstract','as','boolean','break','byte','case','catch','char','class',
@@ -91,29 +80,45 @@ class JSqueeze
     );
 
 
-    function __construct($specialVarRx = false)
+    function __construct()
     {
-        $specialVarRx && $this->specialVarRx = $specialVarRx;
         $this->reserved = array_flip($this->reserved);
-        $this->argFreq = array(-1 => 0);
-        $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
     }
 
     /**
-     * Does the job.
+     * Squeezes a JavaScript source code.
      *
      * Set $singleLine to false if you want optional
      * semi-colons to be replaced by line feeds.
+     *
+     * Set $keepImportantComments to false if you want /*! comments to be removed.
+     *
+     * $specialVarRx defines the regular expression of special variables names
+     * for global vars, methods, properties and in string substitution.
+     * Set it to false if you don't want any.
+     *
+     * If the analysed javascript source contains a single line comment like
+     * this one, then the directive will overwrite $specialVarRx:
+     *
+     * // jsqueez.specialVarRx = your_special_var_regexp_here
+     *
+     * Only the first directive is parsed, others are ignored. It is not possible
+     * to redefine $specialVarRx in the middle of the javascript source.
      *
      * Example:
      * $parser = new JSqueeze;
      * $squeezed_js = $parser->squeeze($fat_js);
      */
 
-    function squeeze($code, $singleLine = true)
+    function squeeze($code, $singleLine = true, $keepImportantComments = true, $specialVarRx = self::SPECIAL_VAR_RX)
     {
         $code = trim($code);
         if ('' === $code) return '';
+
+        $this->argFreq = array(-1 => 0);
+        $this->charFreq = array_combine(range(0, 255), array_fill(0, 256, 0));
+        $this->specialVarRx = $specialVarRx;
+        $this->keepImportantComments = !!$keepImportantComments;
 
         if (preg_match("#//[ \t]*jsqueez\.specialVarRx[ \t]*=[ \t]*([\"']?)(.*)\1#i", $code, $key))
         {
@@ -127,7 +132,7 @@ class JSqueeze
             $this->specialVarRx = $key[1] ? $key[2] : false;
         }
 
-        // Remove capturing parentheses from $this->specialVarRx
+        // Remove capturing parentheses
         $this->specialVarRx && $this->specialVarRx = preg_replace('/(?<!\\\\)((?:\\\\\\\\)*)\((?!\?)/', '(?:', $this->specialVarRx);
 
         false !== strpos($code, "\r"          ) && $code = strtr(str_replace("\r\n", "\n", $code), "\r", "\n");
@@ -150,10 +155,11 @@ class JSqueeze
         $code = str_replace(array_keys($this->strings), array_values($this->strings), $code);
 
         if ($singleLine) $code = strtr($code, "\n", ';');
+        else $code = str_replace("\n", ";\n", $code);
         false !== strpos($code, "\r") && $code = strtr(trim($code), "\r", "\n");
 
         // Cleanup memory
-        // $this->argFreq and $this->charFreq are kept so that frequency stats can be summed up
+        $this->argFreq = $this->charFreq = array();
         $this->string = $this->closures = array();
         $this->str0 = $this->str1 = '';
 
@@ -268,7 +274,7 @@ class JSqueeze
                     ++$i;
                     $instr = '*';
 
-                    if ('!' == $f[$i+1])
+                    if ($this->keepImportantComments && '!' == $f[$i+1])
                     {
                         ++$i;
                         // no break here
