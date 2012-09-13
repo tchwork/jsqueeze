@@ -110,7 +110,7 @@ class JSqueeze
      * If the analysed javascript source contains a single line comment like
      * this one, then the directive will overwrite $specialVarRx:
      *
-     * // jsqueez.specialVarRx = your_special_var_regexp_here
+     * // jsqueeze.specialVarRx = your_special_var_regexp_here
      *
      * Only the first directive is parsed, others are ignored. It is not possible
      * to redefine $specialVarRx in the middle of the javascript source.
@@ -129,7 +129,7 @@ class JSqueeze
         $this->specialVarRx = $specialVarRx;
         $this->keepImportantComments = !!$keepImportantComments;
 
-        if (preg_match("#//[ \t]*jsqueez\.specialVarRx[ \t]*=[ \t]*([\"']?)(.*)\1#i", $code, $key))
+        if (preg_match("#//[ \t]*jsqueeze\.specialVarRx[ \t]*=[ \t]*([\"']?)(.*)\1#i", $code, $key))
         {
             if (!$key[1])
             {
