@@ -23,24 +23,23 @@ Features
   characters' frequency.
 * Renames also global vars, methods and properties, but only if they are marked
   special by some naming convention. By default, special var names begin with
-  one or more "$", or with a single "_".
+  one or more `$`, or with a single `_`.
 * Renames also local/global vars found in strings, but only if they are marked
   special.
-* If you use with/eval then be careful.
+* If you use `with/eval` then be careful.
 
 Bonus
 -----
 
-* Replaces false/true by !1/!0
-* Replaces new Array/Object by []/{}
-* Merges consecutive "var" declarations with commas
+* Replaces `false/true` by `!1/!0`
+* Replaces `new Array/Object` by `[]/{}`
+* Merges consecutive `var` declarations with commas
 * Merges consecutive concatened strings
-* Fix a bug in Safari's parser (http://forums.asp.net/thread/1585609.aspx)
+* Fix [a bug in Safari's parser](http://forums.asp.net/thread/1585609.aspx)
 * Can replace optional semi-colons by line feeds, thus facilitating output
   debugging.
-* Keep important comments marked with /*!...
-* Treats three semi-colons ;;; like single-line comments
-  (http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
+* Keep important comments marked with `/*!...`
+* Treats three semi-colons `;;;` [like single-line comments](http://dean.edwards.name/packer/2/usage/#triple-semi-colon).
 * Fix special catch scope across browsers
 * Work around buggy-handling of named function expressions in IE<=8
 
