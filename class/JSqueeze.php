@@ -341,7 +341,7 @@ class JSqueeze
                     $code[++$j] =
                         false !== strpos('kend', $code[$j-1])
                             && preg_match(
-                                "'(?<![\$.a-zA-Z0-9_])(break|continue|return|yield)$'",
+                                "'(?<![\$.a-zA-Z0-9_])(break|continue|return|yield) ?$'",
                                 substr($code, $j-8, 9)
                             )
                         ? ';' : ' ';
