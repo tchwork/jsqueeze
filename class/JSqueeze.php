@@ -378,7 +378,7 @@ class JSqueeze
         // Add missing semi-colons after curly braces
         // This adds more semi-colons than strictly needed,
         // but it seems that later gzipping is favorable to the repetition of "};"
-        $code = preg_replace("'\}(?![:,;.()\[\]}]|(else|catch|finally|while)[^\$.a-zA-Z0-9_])'", '};', $code);
+        $code = preg_replace("'\}(?![:,;.()\[\]}\|&]|(else|catch|finally|while)[^\$.a-zA-Z0-9_])'", '};', $code);
 
         // Tag possible empty instruction for easy detection
         $code = preg_replace("'(?<![\$.a-zA-Z0-9_])if\('"   , '1#(', $code);
@@ -472,7 +472,7 @@ class JSqueeze
 
         $r1 = array( // keywords with a direct object
             'case','delete','do','else','function','in','instanceof','break',
-            'new','return','throw','typeof','var','void','yield','let',
+            'new','return','throw','typeof','var','void','yield','let','if',
         );
 
         $r2 = array( // keywords with a subject

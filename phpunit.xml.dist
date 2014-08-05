@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <phpunit colors="true"
-         bootstrap="bootstrap.php"
+    bootstrap="tests/bootstrap.php"
 >
     <testsuites>
         <testsuite name="JSqueeze Test Suite">
-            <directory>./JSqueeze/</directory>
+            <directory>tests/JSqueeze/</directory>
         </testsuite>
     </testsuites>
 </phpunit>
