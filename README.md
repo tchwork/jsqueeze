@@ -12,6 +12,19 @@ are missing.
 
 In term of compression ratio, it compares to YUI Compressor and UglifyJS.
 
+Installation
+------------
+
+Through [composer](https://getcomposer.org/):
+
+```javascript
+{
+    "require": {
+        "patchwork/jsqueeze": "~1.0"
+    }
+}
+```
+
 Features
 --------
 
