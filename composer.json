@@ -1,19 +1,21 @@
 {
-    "name": "patchwork/jsqueeze",
+    "name": "tchwork/jsqueeze",
     "type": "library",
     "description": "Efficient JavaScript minification in PHP",
     "keywords": ["javascript","compression","minification"],
-    "homepage": "https://github.com/nicolas-grekas/JSqueeze",
+    "homepage": "https://github.com/tchwork/jsqueeze",
     "license": "(Apache-2.0 or GPL-2.0)",
     "authors": [
         {
             "name": "Nicolas Grekas",
-            "email": "p@tchwork.com",
-            "role": "Developer"
+            "email": "p@tchwork.com"
         }
     ],
     "require": {
         "php": ">=5.1.4"
+    },
+    "replace": {
+        "patchwork/jsqueeze": "*"
     },
     "autoload": {
         "psr-0": {
