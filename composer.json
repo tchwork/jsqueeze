@@ -15,7 +15,7 @@
         "php": ">=5.1.4"
     },
     "replace": {
-        "patchwork/jsqueeze": "*"
+        "patchwork/jsqueeze": "self.version"
     },
     "autoload": {
         "psr-0": {
