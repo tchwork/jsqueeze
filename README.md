@@ -1,6 +1,10 @@
 JSqueeze: Efficient JavaScript minification in PHP
 ==================================================
 
+[![Latest Stable Version](https://poser.pugx.org/patchwork/jsqueeze/v/stable.png)](https://packagist.org/packages/patchwork/jsqueeze)
+[![Total Downloads](https://poser.pugx.org/patchwork/jsqueeze/downloads.png)](https://packagist.org/packages/patchwork/jsqueeze)
+[![Build Status](https://secure.travis-ci.org/tchwork/jsqueeze.png?branch=master)](http://travis-ci.org/tchwork/jsqueeze)
+
 JSqueeze shrinks / compresses / minifies / mangles Javascript code.
 
 It's a single PHP class licensed under Apache 2 and GPLv2 that is beeing
