@@ -20,7 +20,7 @@ Through [composer](https://getcomposer.org/):
 ```javascript
 {
     "require": {
-        "tchwork/jsqueeze": "~1.0"
+        "patchwork/jsqueeze": "~1.0"
     }
 }
 ```
