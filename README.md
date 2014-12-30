@@ -7,9 +7,8 @@ JSqueeze: Efficient JavaScript minification in PHP
 
 JSqueeze shrinks / compresses / minifies / mangles Javascript code.
 
-It's a single PHP class licensed under Apache 2 and GPLv2 that is beeing
-developed, maintained and thouroughly tested since 2003 on major JavaScript
-frameworks (e.g. jQuery).
+It's a single PHP class that has been developed, maintained and thoroughly
+tested since 2003 on major JavaScript frameworks (e.g. jQuery).
 
 JSqueeze operates on any parse error free JavaScript code, even when semi-colons
 are missing.
@@ -67,3 +66,10 @@ To do?
 * {'foo':'bar'} => {foo:'bar'}
 * Dead code removal (never used function)
 * Munge primitives: var WINDOW=window, etc.
+
+License
+-------
+
+JSqueeze is available under the terms of version 2 of the GNU General
+Public License (file LICENSE.GPLv2) or version 2.0 of the Apache Software
+License (file LICENSE.ASL20).
