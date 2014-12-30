@@ -1,4 +1,12 @@
 <?php
+/*
+ * Copyright (C) 2015 Nicolas Grekas - p@tchwork.com
+ *
+ * This library is free software; you can redistribute it and/or modify it
+ * under the terms of the (at your option):
+ * Apache License v2.0 (see provided LICENCE.ASL20 file), or
+ * GNU General Public License v2.0 (see provided LICENCE.GPLv2 file).
+ */
 
 namespace Patchwork\Tests;
 
