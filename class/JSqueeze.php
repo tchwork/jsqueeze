@@ -463,13 +463,6 @@ class JSqueeze
         // Fix "else ;" empty instructions
         $f = preg_replace("'(?<![\$.a-zA-Z0-9_])else\n'", "\n", $f);
 
-        if (false !== strpos($f, 'throw'))
-        {
-            // Fix a bug in Safari's parser
-            $f = preg_replace("'(?<![\$.a-zA-Z0-9_])throw[^\$.a-zA-Z0-9_][^;\}\n]*(?!;)'", '$0;', $f);
-            $f = str_replace(";\n", ';', $f);
-        }
-
         $r1 = array( // keywords with a direct object
             'case','delete','do','else','function','in','instanceof','break',
             'new','return','throw','typeof','var','void','yield','let','if',
