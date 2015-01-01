@@ -24,9 +24,26 @@ Through [composer](https://getcomposer.org/):
 ```javascript
 {
     "require": {
-        "patchwork/jsqueeze": "~1.0"
+        "patchwork/jsqueeze": "~2.0"
     }
 }
+```
+
+Usage
+-----
+
+```php
+
+use Patchwork\JSqueeze;
+
+$jz = new JSqueeze();
+
+$minifiedJs = $jz->squeeze(
+    $fatJs,
+    true,   // $singleLine
+    true,   // $keepImportantComments
+    false   // $specialVarRx
+);
 ```
 
 Features
@@ -38,9 +55,9 @@ Features
 * In order to maximise later HTTP compression (deflate, gzip), new variables
   names are choosen by considering closures, variables' frequency and
   characters' frequency.
-* Renames also global vars, methods and properties, but only if they are marked
-  special by some naming convention. By default, special var names begin with
-  one or more `$`, or with a single `_`.
+* Can rename also global vars, methods and properties, but only if they are marked
+  special by some naming convention. Use JSqueeze::SPECIAL_VAR_PACKER to rename vars
+  whose name begins with one or more `$` or with a single `_`.
 * Renames also local/global vars found in strings, but only if they are marked
   special.
 * If you use `with/eval` then be careful.

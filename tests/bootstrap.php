@@ -1,5 +1,3 @@
 <?php
 
-$dir = dirname(dirname(__FILE__));
-
-require_once $dir . '/class/JSqueeze.php';
+require_once __DIR__ . '/../src/JSqueeze.php';

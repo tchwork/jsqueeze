@@ -1,8 +1,8 @@
 <?php
 
-namespace JSqueeze\Tests;
+namespace Patchwork\Tests;
 
-use JSqueeze;
+use Patchwork\JSqueeze;
 
 class JSqueezeTest extends \PHPUnit_Framework_TestCase
 {

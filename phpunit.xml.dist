@@ -5,7 +5,7 @@
 >
     <testsuites>
         <testsuite name="JSqueeze Test Suite">
-            <directory>tests/JSqueeze/</directory>
+            <directory>tests/</directory>
         </testsuite>
     </testsuites>
 </phpunit>

@@ -8,6 +8,7 @@
  * GNU General Public License v2.0 (http://gnu.org/licenses/gpl-2.0.txt).
  */
 
+namespace Patchwork;
 
 /*
 *
@@ -60,7 +61,7 @@ class JSqueeze
 {
     const
 
-    SPECIAL_VAR_RX = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
+    SPECIAL_VAR_PACKER = '(\$+[a-zA-Z_]|_[a-zA-Z0-9$])[a-zA-Z0-9_$]*';
 
     public
 
@@ -120,7 +121,7 @@ class JSqueeze
      * $squeezed_js = $parser->squeeze($fat_js);
      */
 
-    function squeeze($code, $singleLine = true, $keepImportantComments = true, $specialVarRx = self::SPECIAL_VAR_RX)
+    function squeeze($code, $singleLine = true, $keepImportantComments = true, $specialVarRx = false)
     {
         $code = trim($code);
         if ('' === $code) return '';
