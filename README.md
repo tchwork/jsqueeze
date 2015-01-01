@@ -68,7 +68,6 @@ Bonus
 * Replaces `new Array/Object` by `[]/{}`
 * Merges consecutive `var` declarations with commas
 * Merges consecutive concatened strings
-* Fix [a bug in Safari's parser](http://forums.asp.net/thread/1585609.aspx)
 * Can replace optional semi-colons by line feeds, thus facilitating output
   debugging.
 * Keep important comments marked with `/*!...`
