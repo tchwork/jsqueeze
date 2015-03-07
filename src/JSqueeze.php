@@ -857,6 +857,7 @@ class JSqueeze
         else
         {
             arsort($tree['local']);
+            if (false !== $tree['nfe']) $tree['used'][] = $tree['local'][$tree['nfe']];
 
             foreach ($tree['local'] as $var => $root)
                 if ($tree['nfe'] !== $var)
