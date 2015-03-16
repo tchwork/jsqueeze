@@ -162,6 +162,7 @@ class JSqueeze
 
         $code = substr($tree[$key]['code'], 1);
         $code = preg_replace("'\breturn !'", 'return!', $code);
+        $code = preg_replace("'\}(?=(else|while)[^\$.a-zA-Z0-9_])'", "}\r", $code);
         $code = str_replace(array_keys($this->strings), array_values($this->strings), $code);
 
         if ($singleLine) $code = strtr($code, "\n", ';');
