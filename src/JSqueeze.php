@@ -153,7 +153,7 @@ class JSqueeze
         list($code, $this->strings ) = $this->extractStrings( $code);
         list($code, $this->closures) = $this->extractClosures($code);
 
-        $key = "//''\"\"#0'"; // This crap has a wonderful property: it can not happened in any valid javascript, even in strings
+        $key = "//''\"\"#0'"; // This crap has a wonderful property: it can not happen in any valid javascript, even in strings
         $this->closures[$key] =& $code;
 
         $tree = array($key => array('parent' => false));
