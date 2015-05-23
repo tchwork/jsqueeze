@@ -324,7 +324,7 @@ class JSqueeze
             case "'":
             case '"':
                 $instr = $f[$i];
-                $key = "//''\"\"" . $K++ . ('!' == $instr ? '!' : "'");
+                $key = "//''\"\"" . $K++ . ('!' == $instr ? ']' : "'");
                 $a = $j;
                 $code .= $key;
                 while (isset($key[++$j-$a-1])) $code[$j] = $key[$j-$a-1]; --$j;
