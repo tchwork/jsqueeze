@@ -311,13 +311,29 @@ class JSqueeze
                 else
                 {
                     $a = $j && ' ' == $code[$j] ? $code[$j-1] : $code[$j];
-                    if (false !== strpos('-!%&;<=>~:^+|,(*?[{ ', $a)
+                    if (false !== strpos('-!%&;<=>~:^+|,()*?[{} ', $a)
                         || (false !== strpos('oenfd', $a)
                         && preg_match(
                             "'(?<![\$.a-zA-Z0-9_])(do|else|return|typeof|yield) ?$'",
                             substr($code, $j-7, 8)
                         )))
                     {
+                        if (')' === $a && $j && '(' !== $code[$k = $j - (' ' == $code[$j]) - 1])
+                        {
+                            $a = 1;
+                            while ($k >= 0 && $a)
+                            {
+                                if ('(' === $code[$k]) --$a;
+                                else if (')' === $code[$k]) ++$a;
+                                --$k;
+                            }
+                            if (!preg_match("'(?<![\$.a-zA-Z0-9_])(if|for|while) ?$'", substr($code, 0, $k+1)))
+                            {
+                                $code[++$j] = '/';
+                                break;
+                            }
+                        }
+
                         $key = "//''\"\"" . $K++ . $instr = "/'";
                         $a = $j;
                         $code .= $key;
