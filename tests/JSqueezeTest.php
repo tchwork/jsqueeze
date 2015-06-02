@@ -14,16 +14,16 @@ use Patchwork\JSqueeze;
 
 class JSqueezeTest extends \PHPUnit_Framework_TestCase
 {
-    /** @dataProvider provideUglifyJs */
-    function testUglifyJs($file)
+    /** @dataProvider provideJs */
+    function testJs($file)
     {
         $xfail = '.xfail' === substr($file, -6) ? '.xfail' : '';
         if ($xfail) $file = substr($file, 0, -6);
 
-        if ('.js' === substr($file, -3) && file_exists(__DIR__ . '/uglifyjs/expected/' . $file))
+        if ('.js' === substr($file, -3) && file_exists(__DIR__ . '/expected/' . $file))
         {
-            $test = file_get_contents(__DIR__ . '/uglifyjs/test/' . $file . $xfail);
-            $expe = file_get_contents(__DIR__ . '/uglifyjs/expected/' . $file);
+            $test = file_get_contents(__DIR__ . '/test/' . $file . $xfail);
+            $expe = file_get_contents(__DIR__ . '/expected/' . $file);
 
             $jz = new JSqueeze;
             $test = $jz->squeeze($test) . "\n";
@@ -34,11 +34,11 @@ class JSqueezeTest extends \PHPUnit_Framework_TestCase
         }
     }
 
-    function provideUglifyJs()
+    function provideJs()
     {
         $tests = array();
 
-        if ($h = opendir(__DIR__ . '/uglifyjs/test/')) {
+        if ($h = opendir(__DIR__ . '/test/')) {
             while ($file = readdir($h)) {
                 $tests[] = array($file);
             }
