@@ -284,15 +284,6 @@ class JSqueeze
             }
             else switch ($f[$i])
             {
-            case '+':
-            case '-':
-                if ("\x7F" === $code[$j] && $i < $len && $f[$i+1] === $f[$i])
-                {
-                    $code[$j] = ';';
-                }
-                $code[++$j] = $f[$i];
-                break;
-
             case ';':
                 // Remove triple semi-colon
                 if ($i>0 && ';' == $f[$i-1] && $i+1 < $len && ';' == $f[$i+1]) $f[$i] = $f[$i+1] = '/';
@@ -331,9 +322,10 @@ class JSqueeze
                             substr($code, $j-7, 8)
                         )))
                     {
-                        if (')' === $a && $j && '(' !== $code[$k = $j - (' ' == $code[$j] || "\x7F" == $code[$j]) - 1])
+                        if (')' === $a && $j > 1)
                         {
                             $a = 1;
+                            $k = $j - (' ' == $code[$j] || "\x7F" == $code[$j]) - 1;
                             while ($k >= 0 && $a)
                             {
                                 if ('(' === $code[$k]) --$a;
@@ -412,6 +404,7 @@ class JSqueeze
         $code = preg_replace("'(\d)\s+\.\s*([a-zA-Z\$_[(])'", "$1\x7F.$2", $code);
         $code = preg_replace("# ([-!%&;<=>~:.^+|,()*?[\]{}/']+)#", '$1', $code);
         $code = preg_replace( "#([-!%&;<=>~:.^+|,()*?[\]{}/]+) #", '$1', $code);
+        $cc_on && $code = preg_replace_callback("'//[^\'].*?@#3'", function ($m) {return strtr($m[0], ' ', "\x7F");}, $code);
 
         // Replace new Array/Object by []/{}
         false !== strpos($code, 'new Array' ) && $code = preg_replace( "'new Array(?:\(\)|([;\])},:]))'", '[]$1', $code);
@@ -500,7 +493,7 @@ class JSqueeze
         }
 
         $f = implode('', $f);
-        $cc_on && $f = str_replace('@#3', "\n", $f);
+        $cc_on && $f = str_replace('@#3', "\r", $f);
 
         // Fix "else ;" empty instructions
         $f = preg_replace("'(?<![\$.a-zA-Z0-9_])else\n'", "\n", $f);
