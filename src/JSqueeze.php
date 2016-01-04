@@ -1,6 +1,6 @@
 <?php // vi: set fenc=utf-8 ts=4 sw=4 et:
 /*
- * Copyright (C) 2015 Nicolas Grekas - p@tchwork.com
+ * Copyright (C) 2016 Nicolas Grekas - p@tchwork.com
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the (at your option):
