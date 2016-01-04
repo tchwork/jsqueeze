@@ -284,6 +284,15 @@ class JSqueeze
             }
             else switch ($f[$i])
             {
+            case '+':
+            case '-':
+                if ("\x7F" === $code[$j] && $i < $len && $f[$i+1] === $f[$i])
+                {
+                    $code[$j] = ';';
+                }
+                $code[++$j] = $f[$i];
+                break;
+
             case ';':
                 // Remove triple semi-colon
                 if ($i>0 && ';' == $f[$i-1] && $i+1 < $len && ';' == $f[$i+1]) $f[$i] = $f[$i+1] = '/';
@@ -314,15 +323,15 @@ class JSqueeze
                 }
                 else
                 {
-                    $a = $j && ' ' == $code[$j] ? $code[$j-1] : $code[$j];
+                    $a = $j && (' ' == $code[$j] || "\x7F" == $code[$j]) ? $code[$j-1] : $code[$j];
                     if (false !== strpos('-!%&;<=>~:^+|,()*?[{} ', $a)
                         || (false !== strpos('oenfd', $a)
                         && preg_match(
-                            "'(?<![\$.a-zA-Z0-9_])(do|else|return|typeof|yield) ?$'",
+                            "'(?<![\$.a-zA-Z0-9_])(do|else|return|typeof|yield[ \x7F]?\*?)[ \x7F]?$'",
                             substr($code, $j-7, 8)
                         )))
                     {
-                        if (')' === $a && $j && '(' !== $code[$k = $j - (' ' == $code[$j]) - 1])
+                        if (')' === $a && $j && '(' !== $code[$k = $j - (' ' == $code[$j] || "\x7F" == $code[$j]) - 1])
                         {
                             $a = 1;
                             while ($k >= 0 && $a)
@@ -331,7 +340,7 @@ class JSqueeze
                                 else if (')' === $code[$k]) ++$a;
                                 --$k;
                             }
-                            if (!preg_match("'(?<![\$.a-zA-Z0-9_])(if|for|while) ?$'", substr($code, 0, $k+1)))
+                            if (!preg_match("'(?<![\$.a-zA-Z0-9_])(if|for|while)[ \x7F]?$'", substr($code, 0, $k+1)))
                             {
                                 $code[++$j] = '/';
                                 break;
@@ -366,24 +375,24 @@ class JSqueeze
                 break;
 
             case "\n":
-                if ($j > 5)
+                if ($j > 3)
                 {
-                    ' ' == $code[$j] && --$j;
+                    if (' ' == $code[$j] || "\x7F" == $code[$j]) --$j;
 
                     $code[++$j] =
-                        false !== strpos('kend', $code[$j-1])
+                        false !== strpos('kend+-', $code[$j-1])
                             && preg_match(
-                                "'(?<![\$.a-zA-Z0-9_])(break|continue|return|yield) ?$'",
+                                "'(?:\+\+|--|(?<![\$.a-zA-Z0-9_])(break|continue|return|yield[ \x7F]?\*?))[ \x7F]?$'",
                                 substr($code, $j-8, 9)
                             )
-                        ? ';' : ' ';
+                        ? ';' : "\x7F";
 
                     break;
                 }
 
             case "\t": $f[$i] = ' ';
             case ' ':
-                if (!$j || ' ' == $code[$j]) break;
+                if (!$j || ' ' == $code[$j] || "\x7F" == $code[$j]) break;
 
             default:
                 $code[++$j] = $f[$i];
@@ -397,6 +406,7 @@ class JSqueeze
         $cc_on && $this->restoreCc($code, false);
 
         // Protect wanted spaces and remove unwanted ones
+        $code = strtr($code, "\x7F", ' ');
         $code = str_replace('- -', "-\x7F-", $code);
         $code = str_replace('+ +', "+\x7F+", $code);
         $code = preg_replace("'(\d)\s+\.\s*([a-zA-Z\$_[(])'", "$1\x7F.$2", $code);
