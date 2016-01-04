@@ -909,7 +909,18 @@ class JSqueeze
         $this->used_tree  =& $tree['used'];
 
         $tree['code'] = preg_replace_callback("#[.,{ ]?(?<![a-zA-Z0-9_\$@]){$this->varRx}:?#", array(&$this, 'getNewName'), $tree['code']);
-        $this->specialVarRx && $tree['code'] = preg_replace_callback("#//''\"\"[0-9]+'#", array(&$this, 'renameInString'), $tree['code']);
+
+        if ($this->specialVarRx && preg_match_all("#//''\"\"[0-9]+'#", $tree['code'], $b))
+        {
+            foreach ($b[0] as $a)
+            {
+                $this->strings[$a] = preg_replace_callback(
+                    "#[.,{]?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?#",
+                    array(&$this, 'getNewName'),
+                    $this->strings[$a]
+                );
+            }
+        }
 
         foreach ($tree['childs'] as $a => &$b)
         {
@@ -917,18 +928,6 @@ class JSqueeze
             $tree['code'] = str_replace($a, $b['code'], $tree['code']);
             unset($tree['childs'][$a]);
         }
-    }
-
-    protected function renameInString($a)
-    {
-        $b =& $this->strings[$a[0]];
-        unset($this->strings[$a[0]]);
-
-        return preg_replace_callback(
-            "#[.,{]?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?#",
-            array(&$this, 'getNewName'),
-            $b
-        );
     }
 
     protected function getNewName($m)
