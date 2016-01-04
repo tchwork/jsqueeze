@@ -79,14 +79,18 @@ class JSqueeze
 
     $varRx = '(?:[a-zA-Z_$])[a-zA-Z0-9_$]*',
     $reserved = array(
-        'abstract','as','boolean','break','byte','case','catch','char','class',
-        'const','continue','debugger','default','delete','do','double','else',
-        'enum','export','extends','false','final','finally','float','for',
-        'function','goto','if','implements','import','in','instanceof','int',
-        'long','native','new','null','package','private','protected','public',
-        'return','short','static','super','switch','synchronized','this',
-        'throw','throws','transient','true','try','typeof','var','void',
-        'while','with','yield','let','interface',
+        // Literals
+        'true','false','null',
+        // ES6
+        'break','case','class','catch','const','continue','debugger','default','delete','do','else','export','extends','finally','for','function','if','import','in','instanceof','new','return','super','switch','this','throw','try','typeof','var','void','while','with','yield',
+        // Future
+        'enum',
+        // Strict mode
+        'implements','package','protected','static','let','interface','private','public',
+        // Module
+        'await',
+        // Older standards
+        'abstract','boolean','byte','char','double','final','float','goto','int','long','native','short','synchronized','throws','transient','volatile',
     );
 
 
@@ -492,13 +496,13 @@ class JSqueeze
         $f = preg_replace("'(?<![\$.a-zA-Z0-9_])else\n'", "\n", $f);
 
         $r1 = array( // keywords with a direct object
-            'case','delete','do','else','function','in','instanceof','break',
+            'case','delete','do','else','function','in','instanceof','of','break',
             'new','return','throw','typeof','var','void','yield','let','if',
             'const',
         );
 
         $r2 = array( // keywords with a subject
-            'in','instanceof',
+            'in','instanceof','of',
         );
 
         // Fix missing semi-colons
