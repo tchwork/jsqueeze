@@ -1,3 +1,0 @@
-// FIXME: this getter/setter syntax is currently not supported by JSqueeze.
-//        As it's neither supported by IE<=8, that can wait for now.
-with({get NaN(){throw 0},get Infinity(){throw 0}})(1/0)/(1/0),0/0,123456/0,-123456/0

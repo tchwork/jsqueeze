@@ -401,6 +401,8 @@ class JSqueeze
         $code = strtr($code, "\x7F", ' ');
         $code = str_replace('- -', "-\x7F-", $code);
         $code = str_replace('+ +', "+\x7F+", $code);
+        $code = str_replace('get ', "get\x7F", $code);
+        $code = str_replace('set ', "set\x7F", $code);
         $code = preg_replace("'(\d)\s+\.\s*([a-zA-Z\$_[(])'", "$1\x7F.$2", $code);
         $code = preg_replace("# ([-!%&;<=>~:.^+|,()*?[\]{}/']+)#", '$1', $code);
         $code = preg_replace( "#([-!%&;<=>~:.^+|,()*?[\]{}/]+) #", '$1', $code);
