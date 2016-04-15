@@ -134,7 +134,7 @@ class JSqueeze
         $this->specialVarRx = $specialVarRx;
         $this->keepImportantComments = !!$keepImportantComments;
 
-        if (preg_match("#//[ \t]*jsqueeze\.specialVarRx[ \t]*=[ \t]*([\"']?)(.*)\1#i", $code, $key))
+        if (preg_match("#//[ \t]*jsqueeze\.specialVarRx[ \t]*=[ \t]*([\"']?)(.*)\\1#i", $code, $key))
         {
             if (!$key[1])
             {
@@ -401,8 +401,6 @@ class JSqueeze
         $code = strtr($code, "\x7F", ' ');
         $code = str_replace('- -', "-\x7F-", $code);
         $code = str_replace('+ +', "+\x7F+", $code);
-        $code = str_replace('get ', "get\x7F", $code);
-        $code = str_replace('set ', "set\x7F", $code);
         $code = preg_replace("'(\d)\s+\.\s*([a-zA-Z\$_[(])'", "$1\x7F.$2", $code);
         $code = preg_replace("# ([-!%&;<=>~:.^+|,()*?[\]{}/']+)#", '$1', $code);
         $code = preg_replace( "#([-!%&;<=>~:.^+|,()*?[\]{}/]+) #", '$1', $code);
@@ -503,7 +501,7 @@ class JSqueeze
         $r1 = array( // keywords with a direct object
             'case','delete','do','else','function','in','instanceof','of','break',
             'new','return','throw','typeof','var','void','yield','let','if',
-            'const',
+            'const','get','set'
         );
 
         $r2 = array( // keywords with a subject
@@ -582,7 +580,7 @@ class JSqueeze
             $code = $f[0];
         }
 
-        $f = preg_split("'(?<![a-zA-Z0-9_\$])(function[ (].*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $f = preg_split("'(?<![a-zA-Z0-9_\$])((?:function[ (]|get |set ).*?\{)'", $code, -1, PREG_SPLIT_DELIM_CAPTURE);
         $i = count($f) - 1;
         $closures = array();
 
@@ -602,7 +600,7 @@ class JSqueeze
             {
             default: if (false !== $c = strpos($f[$i-1], ' ', 8)) break;
             case false: case "\n": case ';': case '{': case '}': case ')': case ']':
-                $c = strpos($f[$i-1], '(', 8);
+                $c = strpos($f[$i-1], '(', 4);
             }
 
             $l = "//''\"\"#$i'";
@@ -631,7 +629,7 @@ class JSqueeze
         $tree['local'] = array();
 
         // Replace multiple "var" declarations by a single one
-        $closure = preg_replace_callback("'(?<=[\n\{\}])var [^\n\{\};]+(?:\nvar [^\n\{\};]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
+        $closure = preg_replace_callback("'(?<=[\n\{\}])var [^\n\{\};]+(?:\nvar [^\n\{\};]+)+'", array($this, 'mergeVarDeclarations'), $closure);
 
         // Get all local vars (functions, arguments and "var" prefixed)
 
@@ -709,13 +707,20 @@ class JSqueeze
 
         $vars =& $tree['used'];
 
-        if (preg_match_all("#([.,{]?)(?<![a-zA-Z0-9_\$])({$this->varRx})(:?)#", $closure, $w, PREG_SET_ORDER))
+        if (preg_match_all("#([.,{]?(?:[gs]et )?)(?<![a-zA-Z0-9_\$])({$this->varRx})(:?)#", $closure, $w, PREG_SET_ORDER))
         {
             foreach ($w as $k)
             {
-                if (',' === $k[1] || '{' === $k[1])
+                if (isset($k[1][0]) && (',' === $k[1][0] || '{' === $k[1][0]))
                 {
-                    if (':' === substr($k[3], -1)) $k = '.' . $k[2];
+                    if (':' === $k[3]) $k = '.' . $k[2];
+                    else if ('get ' === substr($k[1], 1, 4) || 'set ' === substr($k[1], 1, 4))
+                    {
+                        ++$this->charFreq[ord($k[1][1])]; // "g" or "s"
+                        ++$this->charFreq[101]; // "e"
+                        ++$this->charFreq[116]; // "t"
+                        $k = '.' . $k[2];
+                    }
                     else $k = $k[2];
                 }
                 else $k = $k[1] . $k[2];
@@ -727,7 +732,7 @@ class JSqueeze
         if (preg_match_all("#//''\"\"[0-9]+(?:['!]|/')#", $closure, $w)) foreach ($w[0] as $a)
         {
             $v = "'" === substr($a, -1) && "/'" !== substr($a, -2) && $this->specialVarRx
-                ? preg_split("#([.,{]?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?)#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE)
+                ? preg_split("#([.,{]?(?:[gs]et )?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?)#", $this->strings[$a], -1, PREG_SPLIT_DELIM_CAPTURE)
                 : array($this->strings[$a]);
             $a = count($v);
 
@@ -740,6 +745,13 @@ class JSqueeze
                     if (',' === $k[0] || '{' === $k[0])
                     {
                         if (':' === substr($k, -1)) $k = '.' . substr($k, 1, -1);
+                        else if ('get ' === substr($k, 1, 4) || 'set ' === substr($k, 1, 4))
+                        {
+                            ++$this->charFreq[ord($k[1])]; // "g" or "s"
+                            ++$this->charFreq[101]; // "e"
+                            ++$this->charFreq[116]; // "t"
+                            $k = '.' . substr($k, 5);
+                        }
                         else $k = substr($k, 1);
                     }
                     else if (':' === substr($k, -1)) $k = substr($k, 0, -1);
@@ -903,15 +915,15 @@ class JSqueeze
         $this->local_tree =& $tree['local'];
         $this->used_tree  =& $tree['used'];
 
-        $tree['code'] = preg_replace_callback("#[.,{ ]?(?<![a-zA-Z0-9_\$@]){$this->varRx}:?#", array(&$this, 'getNewName'), $tree['code']);
+        $tree['code'] = preg_replace_callback("#[.,{ ]?(?:[gs]et )?(?<![a-zA-Z0-9_\$@]){$this->varRx}:?#", array($this, 'getNewName'), $tree['code']);
 
         if ($this->specialVarRx && preg_match_all("#//''\"\"[0-9]+'#", $tree['code'], $b))
         {
             foreach ($b[0] as $a)
             {
                 $this->strings[$a] = preg_replace_callback(
-                    "#[.,{]?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?#",
-                    array(&$this, 'getNewName'),
+                    "#[.,{]?(?:[gs]et )?(?<![a-zA-Z0-9_\$@]){$this->specialVarRx}:?#",
+                    array($this, 'getNewName'),
                     $this->strings[$a]
                 );
             }
@@ -940,6 +952,11 @@ class JSqueeze
             {
                 $post = ':';
                 $m = (' ' !== $m[0] ? '.' : '') . substr($m, 1, -1);
+            }
+            else if ('get ' === substr($m, 1, 4) || 'set ' === substr($m, 1, 4))
+            {
+                $pre .= substr($m, 1, 4);
+                $m = '.' . substr($m, 5);
             }
             else $m = substr($m, 1);
         }
