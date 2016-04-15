@@ -631,7 +631,7 @@ class JSqueeze
         $tree['local'] = array();
 
         // Replace multiple "var" declarations by a single one
-        $closure = preg_replace_callback("'(?<=[\n\{\}])var [^\n\{\}]+(?:\nvar [^\n\{\}]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
+        $closure = preg_replace_callback("'(?<=[\n\{\}])var [^\n\{\};]+(?:\nvar [^\n\{\};]+)+'", array(&$this, 'mergeVarDeclarations'), $closure);
 
         // Get all local vars (functions, arguments and "var" prefixed)
 
