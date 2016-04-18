@@ -830,7 +830,7 @@ class JSqueeze
                 else if (2 == strlen($k)) $tree['used'][] = $k[1];
             }
 
-            arsort($this->charFreq);
+            $this->charFreq = $this->rsort($this->charFreq);
 
             $this->str0 = '';
             $this->str1 = '';
@@ -868,7 +868,7 @@ class JSqueeze
                 if ('.' == substr($var, 0, 1) && isset($tree['local'][substr($var, 1)])) $tree['local'][$var] = $tree['local'][substr($var, 1)];
             }
 
-            arsort($tree['local']);
+            $tree['local'] = $this->rsort($tree['local']);
 
             foreach ($tree['local'] as $var => $root) switch (substr($var, 0, 1))
             {
@@ -892,7 +892,7 @@ class JSqueeze
         }
         else
         {
-            arsort($tree['local']);
+            $tree['local'] = $this->rsort($tree['local']);
             if (false !== $tree['nfe']) $tree['used'][] = $tree['local'][$tree['nfe']];
 
             foreach ($tree['local'] as $var => $root)
@@ -1000,5 +1000,44 @@ class JSqueeze
         $s = str_replace('2#@', '//@', $s);
         $s = str_replace('1#@', '/*@', $s);
         $s = str_replace('##', '#', $s);
+    }
+
+    private function rsort($array)
+    {
+        if (!$array) {
+            return $array;
+        }
+
+        $i = 0;
+        $tuples = array();
+        foreach ($array as $k => &$v)
+        {
+            $tuples[] = array(++$i, $k, &$v);
+        }
+
+        usort($tuples, function ($a, $b) {
+            if ($b[2] > $a[2]) {
+                return 1;
+            }
+            if ($b[2] < $a[2]) {
+                return -1;
+            }
+            if ($b[0] > $a[0]) {
+                return -1;
+            }
+            if ($b[0] < $a[0]) {
+                return 1;
+            }
+
+            return 0;
+        });
+
+        $array = array();
+
+        foreach ($tuples as $t) {
+            $array[$t[1]] = &$t[2];
+        }
+
+        return $array;
     }
 }
