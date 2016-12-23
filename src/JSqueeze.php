@@ -349,6 +349,19 @@ class JSqueeze
 
                     break;
 
+                case '+':
+                case '-':
+                    if ($j && $f[$i] === $f[$i + 1] && "\x7F" == $code[$j] && ';' != $code[$j - 1]) {
+                        $code[$j] = ';';
+                        $code[++$j] = "\x7F";
+                        $code[++$j] = $f[$i];
+                        $code[++$j] = $f[$i];
+                        ++$i;
+                        break;
+                    }
+                    $code[++$j] = $f[$i];
+                    break;
+
                 case "\n":
                     if ($j > 3) {
                         if (' ' == $code[$j] || "\x7F" == $code[$j]) {
