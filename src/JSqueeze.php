@@ -490,7 +490,7 @@ class JSqueeze
         $cc_on && $f = str_replace('@#3', "\r", $f);
 
         // Fix "else ;" empty instructions
-        $f = preg_replace("'(?<![\$.a-zA-Z0-9_])else\n'", "\n", $f);
+        $f = preg_replace("'(?<![\$.a-zA-Z0-9_])else([\n}])'", '$1', $f);
 
         $r1 = array( // keywords with a direct object
             'case','delete','do','else','function','in','instanceof','of','break',
