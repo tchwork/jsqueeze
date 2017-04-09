@@ -356,9 +356,9 @@ class JSqueeze
                         }
 
                         $code[++$j] =
-                            false !== strpos('kend+-', $code[$j - 1])
+                            false !== strpos('kend', $code[$j - 1])
                                 && preg_match(
-                                    "'(?:\+\+|--|(?<![\$.a-zA-Z0-9_])(break|continue|return|yield[ \x7F]?\*?))[ \x7F]?$'",
+                                    "'(?<![\$.a-zA-Z0-9_])(?:break|continue|return|yield[ \x7F]?\*?)[ \x7F]?$'",
                                     substr($code, $j - 8, 9)
                                 )
                             ? ';' : "\x7F";
@@ -383,6 +383,17 @@ class JSqueeze
 
         $code = substr($code, 0, $j + 1);
         $cc_on && $this->restoreCc($code, false);
+
+        // Deal with newlines before/after postfix/prefix operators
+        // (a string literal starts with `//` and ends with `'` at this stage)
+        // http://inimino.org/~inimino/blog/javascript_semicolons
+        // Newlines before prefix are a new statement when a completed expression precedes because postfix is a "restrictd production"
+        $code = preg_replace("#(?<=[a-zA-Z\$_\\d'\\])}])\x7F(--|\\+\\+)#", ';$1', $code);
+        // Newlines after postfix are a new statement if the following token can't be parsed otherwise
+        // i.e. it's a keyword, identifier, string or number literal, prefix operator, opening brace
+        // But a prefix operator can have a newline before its operand, so check a completed expression precedes to be sure it's a postfix
+        // (note that postfix cannot apply to an expression completed with `}`)
+        $code = preg_replace("#(?<=[a-zA-Z\$_\\d'\\])]) ?+(--|\\+\\+)\x7F(?=//|--|\\+\\+|[a-zA-Z\$_\\d[({])#", '$1;', $code);
 
         // Protect wanted spaces and remove unwanted ones
         $code = strtr($code, "\x7F", ' ');
