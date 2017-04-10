@@ -69,6 +69,8 @@ g(function(x) {
   while (1) {
     break
     continue
+    xcontinue
+      = 4
     return
   }
   var o = {
@@ -272,4 +274,162 @@ function issue47(found, context, i) {
 function issue49(out, text, n) {
     out.push(text)
     ++n
+}
+
+/*! Pull #50 comment */
+function pull50(x) {
+  while(x)--x
+  while(x)x--
+  while(x)--
+    x
+  while(x)
+    --x
+  while(x)
+    --
+      x
+  while(x)
+    x--
+  // with semicolon
+  while(x)--x;
+  while(x)x--;
+  while(x)--
+    x;
+  while(x)
+    --x;
+  while(x)
+    --
+      x;
+  while(x)
+    x--;
+  // with space
+  while(x)-- x
+  while(x)x --
+  while(x)
+    -- x
+  while(x)
+    x --
+}
+
+/*! do-while */
+function doWhile(x) {
+  do {
+    x--
+  } while (x--);
+  x--
+  do {
+    x--
+  } while (x--)
+  x--
+  do
+    x--
+  while (x--)
+  x--
+  do {
+    --x
+  } while (--x);
+  --x
+  do {
+    --x
+  } while (--x)
+  --x
+  do --
+    x
+  while (--x)
+  --
+    x
+  // while with empty statement
+  while (--x);
+  --x
+  while (--x)
+    ;
+  --x
+  while (--x) {
+  }
+  --x
+  // nested
+  do
+    while (
+      x --
+    )
+      x --
+  while (
+    x --
+  )
+  x --
+  do {
+    while (
+      x --
+    )
+      x --
+    do
+      x --
+    while (
+      x --
+    )
+    x --
+  } while (x --)
+  x --
+  do
+    while (
+      --
+        x
+    )
+      --
+        x
+  while (
+    --
+      x
+  )
+  --
+    x
+  do {
+    while (
+      --
+        x
+    )
+      --
+        x
+    do
+      --
+        x
+    while (
+      --
+        x
+    )
+    --
+      x
+  } while (
+    --
+      x
+  )
+  --
+    x
+}
+
+/*! other keywords */
+function keywords(x) {
+  if (x)
+    --
+      x
+  else
+    ++
+      x
+  if (x) --
+    x
+  else ++
+    x
+  if (typeof ++
+    x
+      === 'string' ||
+    typeof
+      x ++
+      === 'string'
+  )
+    throw ++
+      x
+  return ++
+    x
+  return
+    ++
+      x
 }

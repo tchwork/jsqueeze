@@ -354,16 +354,22 @@ class JSqueeze
                         if (' ' == $code[$j] || "\x7F" == $code[$j]) {
                             --$j;
                         }
+                        if (false === strpos('oefd', $code[$j])
+                            || !preg_match(
+                                "'(?<![\$.a-zA-Z0-9_])(?:do|else|typeof|void)[ \x7F]?$'",
+                                substr($code, $j - 6, 8)
+                            )
+                        ) {
+                            $code[++$j] =
+                                false !== strpos('kend', $code[$j - 1])
+                                    && preg_match(
+                                        "'(?<![\$.a-zA-Z0-9_])(?:break|continue|return|yield[ \x7F]?\*?)[ \x7F]?$'",
+                                        substr($code, $j - 9, 10)
+                                    )
+                                ? ';' : "\x7F";
 
-                        $code[++$j] =
-                            false !== strpos('kend', $code[$j - 1])
-                                && preg_match(
-                                    "'(?<![\$.a-zA-Z0-9_])(?:break|continue|return|yield[ \x7F]?\*?)[ \x7F]?$'",
-                                    substr($code, $j - 8, 9)
-                                )
-                            ? ';' : "\x7F";
-
-                        break;
+                            break;
+                        }
                     }
 
                 case "\t": $f[$i] = ' ';
@@ -388,12 +394,18 @@ class JSqueeze
         // (a string literal starts with `//` and ends with `'` at this stage)
         // http://inimino.org/~inimino/blog/javascript_semicolons
         // Newlines before prefix are a new statement when a completed expression precedes because postfix is a "restrictd production"
-        $code = preg_replace("#(?<=[a-zA-Z\$_\\d'\\])}])\x7F(--|\\+\\+)#", ';$1', $code);
+        // A closing bracket `)` from if/for/while does not complete an expression, so mark possible `;` as `#` to deal with later
+        $code = preg_replace("#(?<=[a-zA-Z\$_\\d'\\]}])\x7F(--|\\+\\+)#", ';$1', $code);
+        $code = preg_replace("#(?<=\\))\x7F(--|\\+\\+)#", '#$1', $code);
         // Newlines after postfix are a new statement if the following token can't be parsed otherwise
         // i.e. it's a keyword, identifier, string or number literal, prefix operator, opening brace
         // But a prefix operator can have a newline before its operand, so check a completed expression precedes to be sure it's a postfix
+        // Again mark case after closing bracket with `#` to deal with later
+        // Also ensure keywords that may be followed by an expression aren't mistaken for the end of a completed expression
         // (note that postfix cannot apply to an expression completed with `}`)
-        $code = preg_replace("#(?<=[a-zA-Z\$_\\d'\\])]) ?+(--|\\+\\+)\x7F(?=//|--|\\+\\+|[a-zA-Z\$_\\d[({])#", '$1;', $code);
+        $code = preg_replace("#(?<![\$.a-zA-Z0-9_])(do|else|return|throw|typeof|void|yield) ?+(--|\\+\\+)\x7F#", '$1$2 ', $code);
+        $code = preg_replace("#(?<=[a-zA-Z\$_\\d'\\]]) ?+(--|\\+\\+)\x7F(?=//|--|\\+\\+|[a-zA-Z\$_\\d[({])#", '$1;', $code);
+        $code = preg_replace("#(?<=\\)) ?+(--|\\+\\+)\x7F(?=//|--|\\+\\+|[a-zA-Z\$_\\d[({])#", '$1#', $code);
 
         // Protect wanted spaces and remove unwanted ones
         $code = strtr($code, "\x7F", ' ');
@@ -416,11 +428,15 @@ class JSqueeze
         // Tag possible empty instruction for easy detection
         $code = preg_replace("'(?<![\$.a-zA-Z0-9_])if\('", '1#(', $code);
         $code = preg_replace("'(?<![\$.a-zA-Z0-9_])for\('", '2#(', $code);
+        $code = preg_replace("'(?<![\$.a-zA-Z0-9_])do while\('", '4#(', $code);
         $code = preg_replace("'(?<![\$.a-zA-Z0-9_])while\('", '3#(', $code);
+        $code = preg_replace("'(?<![\$.a-zA-Z0-9_])do(?![\$a-zA-Z0-9_])'", '5#', $code);
 
         $forPool = array();
         $instrPool = array();
+        $doPool = array();
         $s = 0;
+        $d = 0;
 
         $f = array();
         $j = -1;
@@ -436,10 +452,22 @@ class JSqueeze
 
                 ++$s;
 
-                if ($i && '#' == $code[$i - 1]) {
-                    $instrPool[$s - 1] = 1;
-                    if ('2' == $code[$i - 2]) {
+                if ($i > 1 && '#' == $code[$i - 1]) {
+                    switch ($code[$i - 2]) {
+                    case '3':
+                        if (isset($doPool[$d])) {
+                            $instrPool[$s - 1] = 5; // `while` corresponds to `do`
+                            unset($doPool[$d]);
+                        } else {
+                            $instrPool[$s - 1] = 1;
+                        }
+                        break;
+                    case '2':
                         $forPool[$s] = 1;
+                        // also set $instrPool
+                    case '1':
+                    case '4':
+                        $instrPool[$s - 1] = 1;
                     }
                 }
 
@@ -458,11 +486,21 @@ class JSqueeze
                 if (')' == $code[$i]) {
                     unset($forPool[$s]);
                     --$s;
+                    if (isset($instrPool[$s]) && 5 === $instrPool[$s]) {
+                        $f[$j - 1] .= ')';
+                        $f[$j] = ';';
+                    }
                 }
 
                 continue 2;
 
+            case '{':
+                ++$d;
+                $f[++$j] = '{';
+                break;
+
             case '}':
+                --$d;
                 if ("\n" == $f[$j]) {
                     $f[$j] = '}';
                 } else {
@@ -470,13 +508,15 @@ class JSqueeze
                 }
                 break;
 
-            case ';':
-                if (isset($forPool[$s]) || isset($instrPool[$s])) {
-                    $f[++$j] = ';';
-                } elseif ($j >= 0 && "\n" != $f[$j] && ';' != $f[$j]) {
-                    $f[++$j] = "\n";
+            case '+':
+            case '-':
+                $f[++$j] = $code[$i];
+                if ($i + 1 < $len
+                    && ($code[$i] === $code[$i + 1] || '#' === $code[$i + 1])
+                ) {
+                    // delay unsetting $instrPool[$s]
+                    continue 2;
                 }
-
                 break;
 
             case '#':
@@ -484,7 +524,35 @@ class JSqueeze
                 case '1': $f[$j] = 'if';    break 2;
                 case '2': $f[$j] = 'for';   break 2;
                 case '3': $f[$j] = 'while'; break 2;
+                case '4':
+                    // special case `while` that doesn't correspond to the `do`
+                    $f[$j] = 'do while';
+                    $doPool[$d] = 1;
+                    break 2;
+                case '5':
+                    $f[$j] = 'do';
+                    $doPool[$d] = 1;
+                case ';': // added after `do..while` - no extra `;` needed
+                    break 2;
+                case ')':
+                case '+':
+                case '-':
+                    if (isset($instrPool[$s])) {
+                        // prefix operator in conditional/loop statement - no `;`
+                        break 2;
+                    }
+                    //else treat as `;`
+                //default should never happen
                 }
+
+            case ';':
+                if (isset($forPool[$s]) || isset($instrPool[$s]) && 5 !== $instrPool[$s]) {
+                    $f[++$j] = ';';
+                } elseif ($j >= 0 && "\n" != $f[$j] && ';' != $f[$j]) {
+                    $f[++$j] = "\n";
+                }
+
+                break;
 
             case '[';
                 if ($j >= 0 && "\n" == $f[$j]) {
