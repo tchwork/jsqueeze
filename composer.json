@@ -22,6 +22,9 @@
             "Patchwork\\": "src/"
         }
     },
+    "scripts": {
+        "ci:tests:unit": "phpunit --coverage-text"
+    },
     "extra": {
         "branch-alias": {
             "dev-master": "2.0-dev"

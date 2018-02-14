@@ -13,10 +13,7 @@ branches:
     - master
 
 install:
-  - >
-    composer install;
-    composer update --with-dependencies --prefer-stable --prefer-dist;
-    composer show;
+  - composer install
 
 script:
-  - phpunit --coverage-text
+  - composer ci:tests:unit
