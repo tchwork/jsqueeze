@@ -166,7 +166,10 @@ class JSqueeze
         $code = substr($tree[$key]['code'], 1);
         $code = preg_replace("'\breturn !'", 'return!', $code);
         $code = preg_replace("'\}(?=(else|while)[^\$.a-zA-Z0-9_])'", "}\r", $code);
-        $code = str_replace(array_keys($this->strings), array_values($this->strings), $code);
+        // $code = str_replace(array_keys($this->strings), array_values($this->strings), $code);
+        // preg_replace is much more efficient than str_replace here
+        // because we don't need to scan the entire code each time for every replacement
+        $code = preg_replace_callback('#//\'\'""\\d++(?:/?+\'|\\])#', array($this, 'restoreString'), $code);
 
         if ($singleLine) {
             $code = strtr($code, "\n", ';');
@@ -1021,6 +1024,11 @@ class JSqueeze
         $s = str_replace('2#@', '//@', $s);
         $s = str_replace('1#@', '/*@', $s);
         $s = str_replace('##', '#', $s);
+    }
+
+    protected function restoreString($m)
+    {
+        return $this->strings[$m[0]];
     }
 
     private function rsort($array)
